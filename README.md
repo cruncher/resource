@@ -1,7 +1,7 @@
 resource
 ========
 
-RESTful Resource contructor for JS 
+RESTful Resource constructor for JS 
 
     Resource(url, data)
 
