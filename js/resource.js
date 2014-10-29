@@ -202,8 +202,9 @@
 		}),
 
 		create: function(data) {
-			return (data && isDefined(data.length)) ?
-				Array.prototype.map.call(data, create, this) :
+			console.log('Resource: create()', data);
+			return arguments.length > 1 ?
+				Array.prototype.map.call(arguments, create, this) :
 				create.call(this, data) ;
 		},
 
@@ -287,7 +288,7 @@
 	}
 
 	function Resource(url, data) {
-		if (debug) { console.log('Resource()', url); }
+		if (debug) { console.log('Resource:', url); }
 
 		var resource = Object.create(resourcePrototype, resourceProperties);
 
@@ -300,14 +301,14 @@
 			}, itemProperties) }
 		});
 
-		if (data === undefined) {
-			data = [];
-		}
+		//if (data === undefined) {
+		//	data = [];
+		//}
 
 		// Populate the resource
-		data.forEach(create, resource);
+		//data.forEach(create, resource);
 
-		var length = resource.length = data.length;
+		var length = resource.length = 0; // = data.length
 
 		// Sort the resource
 		resource.sort();
