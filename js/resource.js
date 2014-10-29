@@ -1,4 +1,4 @@
-(function(mixin) {
+(function(window, Sparky, mixin) {
 	"use strict";
 
 	var debug = true;
@@ -92,17 +92,17 @@
 		var i = 0,
 		    length = arguments.length,
 		    obj2, key;
-	
+
 		while (++i < length) {
 			obj2 = arguments[i];
-	
+
 			for (key in obj2) {
 				if (obj2.hasOwnProperty(key)) {
 					obj[key] = obj2[key];
 				}
 			}
 		}
-	
+
 		return obj;
 	}
 
@@ -286,7 +286,7 @@
 		return a.id > b.id ? 1 : -1 ;
 	}
 
-	window.Resource = function(url, data) {
+	function Resource(url, data) {
 		if (debug) { console.log('Resource()', url); }
 
 		var resource = Object.create(resourcePrototype, resourceProperties);
@@ -332,4 +332,6 @@
 	Resource.prototype = resourcePrototype;
 	Resource.properties = resourceProperties;
 	Resource.createId = createId;
-})(window.mixin);
+
+	window.Resource = Resource;
+})(window, window.Sparky, window.mixin);
