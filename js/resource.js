@@ -5,7 +5,7 @@
 	var itemPrototype = Object.defineProperties({}, {
 		save: {
 			value: function() {
-				console.log('SAVE');
+				console.log('Resource: model.save()', this);
 
 				if (this.validate()) {
 					if (this.isOnRemote) {
