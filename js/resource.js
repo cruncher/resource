@@ -81,6 +81,7 @@
 		return function createId() { return --n; }
 	})(0);
 
+	function noop() {}
 	function returnThis() { return this; }
 	function returnTrue() { return true; }
 
@@ -190,6 +191,32 @@
 			});
 	}
 
+	function Throttle(fn) {
+		var queue, value;
+
+		function reset() {
+			queue = queueFn;
+		}
+
+		function queueFn(context, args) {
+			value = fn.apply(context, args);
+			queue = noop;
+
+			// Queue update
+			window.requestAnimationFrame(reset);
+		}
+
+		function throttle() {
+			// Queue the update
+			queue(this, arguments);
+			return value;
+		}
+
+		reset();
+
+		return throttle;
+	}
+
 	mixin.resource = {
 		request: (function(types) {
 			return function(type, object) {
@@ -209,23 +236,24 @@
 		},
 
 		delete: function(id) {
+			console.log(id);
 			this.remove(id);
 			this.request('delete', id);
 			return this;
 		},
 
-		load: function() {
+		load: Throttle(function load() {
 			var resource = this;
-			
-			return this
+
+			return resource
 			.retrieve()
 			.request('get')
 			.then(function() {
 				return resource.store();
 			});
-		},
+		}),
 
-		save: function() {
+		save: Throttle(function save() {
 			var n = this.length;
 
 			while (n--) {
@@ -235,7 +263,7 @@
 			}
 
 			return this.store();
-		},
+		}),
 		
 		// Get an event from memory or localForage or via AJAX.
 		
