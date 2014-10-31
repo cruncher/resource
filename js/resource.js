@@ -1,7 +1,7 @@
 (function(window, Sparky, mixin) {
 	"use strict";
 
-	var debug = true;
+	var debug = window.debug !== false;
 	var itemPrototype = Object.defineProperties({}, {
 		save: {
 			value: function() {
@@ -206,15 +206,13 @@
 			window.requestAnimationFrame(reset);
 		}
 
-		function throttle() {
+		reset();
+
+		return function throttle() {
 			// Queue the update
 			queue(this, arguments);
 			return value;
-		}
-
-		reset();
-
-		return throttle;
+		};
 	}
 
 	mixin.resource = {
@@ -229,20 +227,20 @@
 		}),
 
 		create: function(data) {
-			console.log('Resource: create()', data);
+			if (debug) { console.log('Resource: create()', data); }
 			return arguments.length > 1 ?
 				Array.prototype.map.call(arguments, create, this) :
 				create.call(this, data) ;
 		},
 
 		delete: function(id) {
-			console.log(id);
+			if (debug) { console.log('Resource: delete()', id); }
 			this.remove(id);
 			this.request('delete', id);
 			return this;
 		},
 
-		load: Throttle(function load() {
+		load: function load() {
 			var resource = this;
 
 			return resource
@@ -251,9 +249,9 @@
 			.then(function() {
 				return resource.store();
 			});
-		}),
+		},
 
-		save: Throttle(function save() {
+		save: function save() {
 			var n = this.length;
 
 			while (n--) {
@@ -263,8 +261,8 @@
 			}
 
 			return this.store();
-		}),
-		
+		},
+
 		// Get an event from memory or localForage or via AJAX.
 		
 		fetch: function(id) {
@@ -302,44 +300,12 @@
 
 	var resourcePrototype = Sparky.extend({}, mixin.storage, mixin.events, mixin.array, mixin.collection, mixin.resource);
 
-	var resourceProperties = {
-		length: {
-			value: 0,
-			enumerable: false,
-			writable: true,
-			configurable: true
-		}
-	};
-
 	function byId(a, b) {
 		return a.id > b.id ? 1 : -1 ;
 	}
 
-	function Resource(url, data) {
-		if (debug) { console.log('Resource:', url); }
-
-		var resource = Object.create(resourcePrototype, resourceProperties);
-
-		Object.defineProperties(resource, {
-			index:      { value: 'id' },
-			url:        { value: url, configurable: true, writable: true },
-			prototype:  { value: Object.create(itemPrototype) },
-			properties: { value: extend({
-				url: { value: url }
-			}, itemProperties) }
-		});
-
-		//if (data === undefined) {
-		//	data = [];
-		//}
-
-		// Populate the resource
-		//data.forEach(create, resource);
-
-		var length = resource.length = 0; // = data.length
-
-		// Sort the resource
-		resource.sort();
+	function observeLength(resource) {
+		var length = resource.length = 0;
 
 		// Watch the length and delete indexes when the length becomes shorter
 		// like a nice array does.
@@ -354,12 +320,26 @@
 
 			length = resource.length;
 		});
+	}
 
+	function Resource(url, data) {
+		if (debug) { console.log('Resource:', url); }
+
+		var resource = Object.create(resourcePrototype, {
+		    	load:       { value: Throttle(resourcePrototype.load) },
+		    	save:       { value: Throttle(resourcePrototype.save) },
+		    	index:      { value: 'id' },
+		    	url:        { value: url, configurable: true },
+		    	length:     { value: 0,   configurable: true, writable: true },
+		    	prototype:  { value: Object.create(itemPrototype) },
+		    	properties: { value: extend({ url: { value: url }}, itemProperties) }
+		    });
+
+		observeLength(resource);
 		return resource;
 	};
 
 	Resource.prototype = resourcePrototype;
-	Resource.properties = resourceProperties;
 	Resource.createId = createId;
 
 	window.Resource = Resource;
