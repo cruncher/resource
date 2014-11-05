@@ -172,13 +172,16 @@
 	
 	function requestPost(resource, object) {
 		object._saving = true;
-	
+
 		return jQuery
 			.post(resource.url, object)
 			.then(function(res) {
 				extend(object, res);
 				object._saved = true;
 				object._saving = false;
+				// Does this only trigger when saving new objects?
+				// Shoudl do.... TODO: test it
+				resource.trigger('post', object);
 				return object;
 			});
 	}
