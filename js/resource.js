@@ -325,8 +325,12 @@
 		});
 	}
 
-	function Resource(url, data) {
+	var cache = {};
+
+	function Resource(url, options) {
 		if (debug) { console.log('Resource:', url); }
+
+		if (cache[url]) { return cache[url]; }
 
 		var resource = Object.create(resourcePrototype, {
 		    	load:       { value: Throttle(resourcePrototype.load) },
@@ -335,7 +339,7 @@
 		    	url:        { value: url, configurable: true },
 		    	length:     { value: 0,   configurable: true, writable: true },
 		    	prototype:  { value: Object.create(itemPrototype) },
-		    	properties: { value: extend({ url: { value: url }}, itemProperties) }
+		    	properties: { value: extend({ url: { value: url }}, itemProperties, options.properties) }
 		    });
 
 		observeLength(resource);
