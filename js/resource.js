@@ -325,13 +325,18 @@
 		});
 	}
 
-	function Resource(url, data) {
+	var defaults = {
+	    	index: 'id'
+	    };
+
+	function Resource(url, settings) {
 		if (debug) { console.log('Resource:', url); }
 
+		var options = extend({}, defaults, settings);
 		var resource = Object.create(resourcePrototype, {
 		    	load:       { value: Throttle(resourcePrototype.load) },
 		    	save:       { value: Throttle(resourcePrototype.save) },
-		    	index:      { value: 'id' },
+		    	index:      { value: options.index },
 		    	url:        { value: url, configurable: true },
 		    	length:     { value: 0,   configurable: true, writable: true },
 		    	prototype:  { value: Object.create(itemPrototype) },
