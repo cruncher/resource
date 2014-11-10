@@ -187,8 +187,7 @@
 	}
 
 	function requestDelete(resource, id) {
-		return jQuery
-			.ajax({
+		return jQuery.ajax({
 				type: 'DELETE',
 				url: resource.url + '/' + id
 			});
@@ -220,7 +219,7 @@
 
 	mixin.resource = {
 		request: (function(types) {
-			return function(type, object) {
+			return function request(type, object) {
 				return types[type](this, object);
 			};
 		})({
@@ -238,8 +237,22 @@
 
 		delete: function(id) {
 			if (debug) { console.log('Resource: delete()', id); }
-			this.remove(id);
-			this.request('delete', id);
+
+			var resource = this;
+			var record = this.find(id);
+
+			this
+			.remove(id)
+			.request('delete', id)
+			.then(function deleteSuccess() {
+				// Success. Do nothing.
+			}, function deleteFail(error) {
+				console.log(error);
+				// Delete failed = put the record back into
+				// the resource
+				resource.add(record);
+			});
+
 			return this;
 		},
 
@@ -249,8 +262,11 @@
 			return resource
 			.retrieve()
 			.request('get')
-			.then(function() {
+			.then(function loadSuccess() {
 				return resource.store();
+			}, function loadFail(error) {
+				// Load failed
+				console.log(error);
 			});
 		},
 
@@ -325,17 +341,22 @@
 		});
 	}
 
+	var defaults = {
+	    	index: 'id'
+	    };
+
 	var cache = {};
 
-	function Resource(url, options) {
+	function Resource(url, settings) {
 		if (debug) { console.log('Resource:', url); }
-
 		if (cache[url]) { return cache[url]; }
+
+		var options = extend({}, defaults, settings);
 
 		var resource = Object.create(resourcePrototype, {
 		    	load:       { value: Throttle(resourcePrototype.load) },
 		    	save:       { value: Throttle(resourcePrototype.save) },
-		    	index:      { value: 'id' },
+		    	index:      { value: options.index },
 		    	url:        { value: url, configurable: true },
 		    	length:     { value: 0,   configurable: true, writable: true },
 		    	prototype:  { value: Object.create(itemPrototype) },
