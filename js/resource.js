@@ -342,28 +342,38 @@
 	}
 
 	var defaults = {
-	    	index: 'id'
+	    	index: 'id',
+	    	setup: noop
 	    };
 
 	var cache = {};
 
 	function Resource(url, settings) {
-		if (debug) { console.log('Resource:', url); }
+		if (debug) { console.log('Resource:', url, 'from cache:', !!cache[url]); }
 		if (cache[url]) { return cache[url]; }
 
 		var options = extend({}, defaults, settings);
 
-		var resource = Object.create(resourcePrototype, {
+		var resource = cache[url] = Object.create(resourcePrototype, {
+		    	url: {
+		    		get: function() { return url; },
+		    		set: function(value) {
+		    			if (cache[value]) { throw new Error('Resource: Cant set resource URL ' + value + '. A resource with that URL already exists.'); }
+		    			if (cache[url]) { delete cache[url]; }
+		    			url = value;
+		    			cache[url] = this;
+		    		}
+		    	},
 		    	load:       { value: Throttle(resourcePrototype.load) },
 		    	save:       { value: Throttle(resourcePrototype.save) },
 		    	index:      { value: options.index },
-		    	url:        { value: url, configurable: true },
-		    	length:     { value: 0,   configurable: true, writable: true },
+		    	length:     { value: 0, configurable: true, writable: true },
 		    	prototype:  { value: Object.create(itemPrototype) },
 		    	properties: { value: extend({ url: { value: url }}, itemProperties, options.properties) }
 		    });
 
 		observeLength(resource);
+		options.setup(resource);
 		return resource;
 	};
 
