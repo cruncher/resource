@@ -8,7 +8,7 @@
 				console.log('Resource: model.save()', this);
 
 				if (this.validate()) {
-					if (this.isOnRemote) {
+					if (isDefined(this.url)) {
 						this.patch();
 					}
 					else {
@@ -23,15 +23,14 @@
 
 		post: {
 			value: function() {
-				this._resource.request('post', this);
-				return this;
+				return this._resource.request('post', this);
 			}
 		},
 
 		patch: {
 			value: function() {
 				return jQuery.ajax({
-					url: this._resource.url + '/' + this.id,
+					url: this.url,
 					type: 'PATCH',
 					data: this
 				});
@@ -55,13 +54,16 @@
 				return this._resource.delete(this.id);
 			}
 		},
-		
+
+		// Deprecated. Is this.url will tell you if the item
+		// is stored on the server.
 		isOnRemote: {
 			get: function() {
-				return isDefined(this.id) && this.id > -1;
+				console.warn('Resource: item.isOnRemote() is deprecated. Use item.url.');
+				return isDefined(this.url);
 			}
 		},
-		
+
 		validate: {
 			value: returnTrue,
 			writable: true
@@ -69,10 +71,21 @@
 	});
 
 	var itemProperties = {
+		url: {
+			get: function() {
+				if (this._resource.url && isDefined(this.id) && (this.id > -1)) {
+					return this._resource.url + '/' + this.id;
+				}
+			},
+			set: function(url) {
+				console.log('Resource: trying to set resource url. Dont.', url);
+			},
+			enumerable: false,
+			configurable: true
+		},
 		_saved:    { value: false,  writable: true, enumerable: false },
 		_saving:   { value: false,  writable: true, enumerable: false },
 		_resource: { value: {},     writable: true, enumerable: false },
-		url:       { value: '',     writable: true, enumerable: false, configurable: true },
 		active:    { value: false,  writable: true, enumerable: false, configurable: true },
 		selected:  { value: false,  writable: true, enumerable: false, configurable: true }
 	};
@@ -274,7 +287,7 @@
 			var n = this.length;
 
 			while (n--) {
-				if (!this[n].isOnRemote || this[n]._saved === false) {
+				if (!isDefined(this[n].url) || this[n]._saved === false) {
 					this[n].save();
 				}
 			}
@@ -283,15 +296,18 @@
 		},
 
 		// Get an event from memory or localForage or via AJAX.
-		
+
 		fetch: function(id) {
 			var resource = this;
 			
 			return new Promise(function(resolve, reject) {
 				var object = resource.find(id);
-				
-				if (object) { resolve(object); }
-				
+
+				if (object) {
+					resolve(object);
+					return;
+				}
+
 				resource.request('get', id).then(function(object) {
 					resolve(object);
 				}, reject);
@@ -349,7 +365,7 @@
 	var cache = {};
 
 	function Resource(url, settings) {
-		if (debug) { console.log('Resource:', url, 'from cache:', !!cache[url]); }
+		if (debug) { console.log('Resource: url:', '"' + url + '"', 'from cache:', !!cache[url]); }
 		if (cache[url]) { return cache[url]; }
 
 		var options = extend({}, defaults, settings);
