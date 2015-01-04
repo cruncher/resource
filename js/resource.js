@@ -2,65 +2,43 @@
 	"use strict";
 
 	var debug = window.debug !== false;
+
+	var failedPromise = new Promise(function(accept, reject) {
+		reject('Object not found in resource.');
+	});
+
 	var itemPrototype = Object.defineProperties({}, {
 		save: {
-			value: function() {
-				console.log('Resource: model.save()', this);
+			value: function save() {
+				console.log('Resource: object.save()', this);
 
 				if (this.validate()) {
 					if (isDefined(this.url)) {
-						this.patch();
+						this.request('patch');
 					}
 					else {
-						console.log('POST');
-						this.post();
+						this.request('post');
 					}
 				}
-				else { console.log('SAVE failed - object not valid', this); }
+				else {
+					console.log('SAVE failed - object not valid', this);
+				}
+
 				return this;
 			}
 		},
 
 		post: {
 			value: function() {
-				return this._resource.request('post', this);
+				console.warn('object.post() deprecated. Use object.request("post")');
+				return this.request('post');
 			}
 		},
 
 		patch: {
 			value: function() {
-				return jQuery.ajax({
-					url: this.url,
-					type: 'PATCH',
-					data: this
-				});
-			}
-		},
-
-		//		put: function() {
-		//			var url = this._resource.url + '/' + this.id;
-		//			
-		//			console.log('PUT', this);
-		//			
-		//			return jQuery.ajax({
-		//				url: url,
-		//				type: 'PUT',
-		//				data: this
-		//			});
-		//		},
-
-		delete: {
-			value: function() {
-				return this._resource.delete(this.id);
-			}
-		},
-
-		// Deprecated. Is this.url will tell you if the item
-		// is stored on the server.
-		isOnRemote: {
-			get: function() {
-				console.warn('Resource: item.isOnRemote() is deprecated. Use item.url.');
-				return isDefined(this.url);
+				console.warn('object.patch() deprecated. Use object.request("patch")');
+				return this.request('patch');
 			}
 		},
 
@@ -71,21 +49,8 @@
 	});
 
 	var itemProperties = {
-		url: {
-			get: function() {
-				if (this._resource.url && isDefined(this.id) && (this.id > -1)) {
-					return this._resource.url + '/' + this.id;
-				}
-			},
-			set: function(url) {
-				console.log('Resource: trying to set resource url. Dont.', url);
-			},
-			enumerable: false,
-			configurable: true
-		},
 		_saved:    { value: false,  writable: true, enumerable: false },
 		_saving:   { value: false,  writable: true, enumerable: false },
-		_resource: { value: {},     writable: true, enumerable: false },
 		active:    { value: false,  writable: true, enumerable: false, configurable: true },
 		selected:  { value: false,  writable: true, enumerable: false, configurable: true }
 	};
@@ -130,17 +95,11 @@
 
 		var object = Object.create(resource.prototype, resource.properties);
 
-		// A hard link back to the parent resource. Is
-		// this really a great idea?
-		object._resource = resource;
-
-		if (data) {
-			extend(object, data);
-		}
+		if (data) { extend(object, data); }
 
 		// Give the object an id if it does not already have one.
-		if (!isDefined(object.id)) {
-			object.id = createId();
+		if (!isDefined(object[resource.index])) {
+			object[resource.index] = createId();
 		}
 
 		resource.add(object);
@@ -163,27 +122,39 @@
 		object._saved = true;
 	}
 
-	function requestGet(resource, id) {
-		return isDefined(id) ?
-	
-			jQuery
-			.get(resource.url + '/' + id)
+	function requestGet(resource, object) {
+		if (!isDefined(object)) {
+			return jQuery
+				.get(resource.url)
+				.then(function(res) {
+					res.forEach(setSaved);
+					resource.update.apply(resource, res);
+					return resource;
+				}) ;
+		}
+
+		var key = typeof object === 'number' || typeof object === 'string' ?
+			object :
+			object[resource.index] ;
+
+		if (!isDefined(key)) { return failedPromise; }
+
+		return jQuery
+			.get(resource.url + '/' + key)
 			.then(function(res) {
 				setSaved(res);
 				resource.update(res);
 				return resource.find(res);
-			}) :
-	
-			jQuery
-			.get(resource.url)
-			.then(function(res) {
-				res.forEach(setSaved);
-				resource.update(res);
-				return res;
-			}) ;
+			});
 	}
-	
+
 	function requestPost(resource, object) {
+		// Cant post this, it doesn't exist.
+		if (!isDefined(object)) {
+			throw new Error('Resource: .request("post", object) called without object.');
+		}
+
+		object = resource.find(object) || object;
 		object._saving = true;
 
 		return jQuery
@@ -199,10 +170,40 @@
 			});
 	}
 
-	function requestDelete(resource, id) {
+	function requestDelete(resource, object) {
+		// Cant delete this, it doesn't exist.
+		if (!isDefined(object)) {
+			throw new Error('Resource: .request("delete", object) called without object.');
+		}
+
+		var key = typeof object === 'number' || typeof object === 'string' ?
+			object :
+			object[resource.index] ;
+
 		return jQuery.ajax({
 				type: 'DELETE',
-				url: resource.url + '/' + id
+				url: resource.url + '/' + key
+			});
+	}
+
+	function requestPatch(resource, object) {
+		var key = resource.index;
+
+		// Cant patch this, it doesn't exist.
+		if (!object) {
+			throw new Error('Resource: .request("patch", object) called without object.');
+		}
+
+		object = resource.find(object) || object;
+
+		if (!isDefined(object[key])) {
+			return failedPromise;
+		}
+
+		return jQuery.ajax({
+				type: 'PATCH',
+				url: resource.url + '/' + object[key],
+				data: object
 			});
 	}
 
@@ -238,7 +239,8 @@
 		})({
 			'get': requestGet,
 			'post': requestPost,
-			'delete': requestDelete
+			'delete': requestDelete,
+			'patch': requestPatch
 		}),
 
 		create: function(data) {
@@ -369,7 +371,6 @@
 		if (cache[url]) { return cache[url]; }
 
 		var options = extend({}, defaults, settings);
-
 		var resource = cache[url] = Object.create(resourcePrototype, {
 		    	url: {
 		    		get: function() { return url; },
@@ -385,8 +386,33 @@
 		    	index:      { value: options.index },
 		    	length:     { value: 0, configurable: true, writable: true },
 		    	prototype:  { value: Object.create(itemPrototype) },
-		    	properties: { value: extend({ url: { value: url }}, itemProperties, options.properties) }
+		    	properties: { value: extend({
+		    		// Define properties that rely on resource.
+
+		    		url: {
+		    			get: function() {
+		    				if (resource.url && isDefined(this.id) && (this.id > -1)) {
+		    					return resource.url + '/' + this.id;
+		    				}
+		    			},
+		    			set: function(url) {
+		    				console.log('Resource: trying to set resource url. Dont.', url);
+		    			},
+		    			enumerable: false,
+		    			configurable: true
+		    		}
+		    	}, itemProperties, options.properties) }
 		    });
+
+		// Define methods that rely on access to resource.
+
+		resource.prototype.request = function request(method) {
+			return resource.request(method, this);
+		};
+
+		resource.prototype.delete = function destroy() {
+			return resource.delete(this);
+		};
 
 		observeLength(resource);
 		options.setup(resource);
