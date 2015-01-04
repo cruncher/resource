@@ -234,6 +234,7 @@
 	mixin.resource = {
 		request: (function(types) {
 			return function request(type, object) {
+				if (!types[type]) { throw new Error('Resource: request("' + type + '") is not a request type.'); }
 				return types[type](this, object);
 			};
 		})({
@@ -388,11 +389,10 @@
 		    	prototype:  { value: Object.create(itemPrototype) },
 		    	properties: { value: extend({
 		    		// Define properties that rely on resource.
-
 		    		url: {
 		    			get: function() {
-		    				if (resource.url && isDefined(this.id) && (this.id > -1)) {
-		    					return resource.url + '/' + this.id;
+		    				if (url && isDefined(this[resource.index]) && (this[resource.index] > -1)) {
+		    					return url + '/' + this[resource.index];
 		    				}
 		    			},
 		    			set: function(url) {
@@ -404,15 +404,20 @@
 		    	}, itemProperties, options.properties) }
 		    });
 
-		// Define methods that rely on access to resource.
+		// Define methods that rely on resource.
+		Object.defineProperties(resource.prototype, {
+			request: {
+				value: function request(method) {
+					return resource.request(method, this);
+				}
+			},
 
-		resource.prototype.request = function request(method) {
-			return resource.request(method, this);
-		};
-
-		resource.prototype.delete = function destroy() {
-			return resource.delete(this);
-		};
+			delete: {
+				value: function destroy() {
+					return resource.delete(this);
+				}
+			}
+		});
 
 		observeLength(resource);
 		options.setup(resource);
