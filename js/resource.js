@@ -43,10 +43,6 @@
 		selected:  { value: false,  writable: true, enumerable: false, configurable: true }
 	};
 
-	var createId = (function(n) {
-		return function createId() { return --n; }
-	})(0);
-
 	function logError(error) {
 		console.error(error.stack);
 	}
@@ -88,11 +84,6 @@
 		var object = Object.create(resource.prototype, resource.properties);
 
 		if (data) { extend(object, data); }
-
-		// Give the object an id if it does not already have one.
-		if (!isDefined(object[resource.index])) {
-			object[resource.index] = createId();
-		}
 
 		resource.add(object);
 		return object;
@@ -435,7 +426,6 @@
 	};
 
 	Resource.prototype = resourcePrototype;
-	Resource.createId = createId;
 
 	window.Resource = Resource;
 })(window, window.Sparky, window.mixin);
