@@ -14,31 +14,19 @@
 
 				if (this.validate()) {
 					if (isDefined(this.url)) {
-						this.request('patch');
+						console.log('PATCH');
+						return this.request('patch');
 					}
 					else {
-						this.request('post');
+						console.log('POST');
+						return this.request('post');
 					}
 				}
 				else {
 					console.log('SAVE failed - object not valid', this);
 				}
 
-				return this;
-			}
-		},
-
-		post: {
-			value: function() {
-				console.warn('object.post() deprecated. Use object.request("post")');
-				return this.request('post');
-			}
-		},
-
-		patch: {
-			value: function() {
-				console.warn('object.patch() deprecated. Use object.request("patch")');
-				return this.request('patch');
+				return failedPromise;
 			}
 		},
 
@@ -58,6 +46,10 @@
 	var createId = (function(n) {
 		return function createId() { return --n; }
 	})(0);
+
+	function logError(error) {
+		console.error(error.stack);
+	}
 
 	function noop() {}
 	function returnThis() { return this; }
@@ -106,15 +98,14 @@
 		return object;
 	}
 
-	function update(object) {
-		var resource = this;
+	function update(resource, object) {
 		var item = resource.find(object);
 
 		if (item) {
 			extend(item, object);
 			return;
 		}
-		
+
 		create.call(resource, object);
 	}
 
@@ -124,13 +115,16 @@
 
 	function requestGet(resource, object) {
 		if (!isDefined(object)) {
-			return jQuery
-				.get(resource.url)
-				.then(function(res) {
-					res.forEach(setSaved);
-					resource.update.apply(resource, res);
+			return jQuery.ajax({
+					type: 'get',
+					url: resource.url
+				})
+				.then(function multiResponse(response) {
+					response.forEach(setSaved);
+					resource.update.apply(resource, response);
 					return resource;
-				}) ;
+				})
+				.fail(logError);
 		}
 
 		var key = typeof object === 'number' || typeof object === 'string' ?
@@ -139,62 +133,51 @@
 
 		if (!isDefined(key)) { return failedPromise; }
 
-		return jQuery
-			.get(resource.url + '/' + key)
-			.then(function(res) {
-				setSaved(res);
-				resource.update(res);
-				return resource.find(res);
-			});
+		return jQuery.ajax({
+				type: 'get',
+				url: resource.url + '/' + key
+			})
+			.then(function singleResponse(response) {
+				setSaved(response);
+				return resource
+					.update(response)
+					.find(response);
+			})
+			.fail(logError);
 	}
 
 	function requestPost(resource, object) {
+		object = resource.find(object);
+
 		// Cant post this, it doesn't exist.
 		if (!isDefined(object)) {
-			throw new Error('Resource: .request("post", object) called without object.');
+			throw new Error('Resource: .request("post", object) called, object not found in resource.');
 		}
 
-		object = resource.find(object) || object;
 		object._saving = true;
 
-		return jQuery
-			.post(resource.url, object)
-			.then(function(res) {
-				extend(object, res);
-				object._saved = true;
-				object._saving = false;
-				// Does this only trigger when saving new objects?
-				// Shoudl do.... TODO: test it
-				resource.trigger('post', object);
-				return object;
-			});
-	}
-
-	function requestDelete(resource, object) {
-		// Cant delete this, it doesn't exist.
-		if (!isDefined(object)) {
-			throw new Error('Resource: .request("delete", object) called without object.');
-		}
-
-		var key = typeof object === 'number' || typeof object === 'string' ?
-			object :
-			object[resource.index] ;
-
 		return jQuery.ajax({
-				type: 'DELETE',
-				url: resource.url + '/' + key
-			});
+				type: 'post',
+				url: resource.url,
+				data: object
+			})
+			.then(function(response) {
+				extend(object, response);
+				setSaved(object);
+				return object;
+			})
+			.fail(logError);
 	}
 
 	function requestPatch(resource, object) {
 		var key = resource.index;
 
+		object = resource.find(object);
+
 		// Cant patch this, it doesn't exist.
 		if (!object) {
 			throw new Error('Resource: .request("patch", object) called without object.');
 		}
-
-		object = resource.find(object) || object;
 
 		if (!isDefined(object[key])) {
 			return failedPromise;
@@ -204,7 +187,44 @@
 				type: 'PATCH',
 				url: resource.url + '/' + object[key],
 				data: object
-			});
+			})
+			.then(function(response) {
+				extend(object, response);
+				setSaved(object);
+
+				return object;
+			})
+			.fail(logError);
+	}
+
+	function requestDelete(resource, object) {
+		object = this.find(object);
+
+		// Cant delete this, it doesn't exist.
+		if (!isDefined(object)) {
+			throw new Error('Resource: .request("delete", object) called, object not found in resource.');
+		}
+
+		var key = object[resource.index];
+
+		if (!isDefined(key)) { return failedPromise; }
+
+		resource.remove(object);
+
+		return jQuery.ajax({
+				type: 'DELETE',
+				url: resource.url + '/' + key
+			})
+			.then(function deleteSuccess() {
+				// Success. Do nothing.
+			}, function deleteFail(error) {
+				console.error(error.stack);
+				console.log('Resource: delete request failed. Putting object back into resource.');
+				// Delete failed, put the record back into
+				// the resource
+				resource.add(record);
+			})
+			.fail(logError);
 	}
 
 	function Throttle(fn) {
@@ -231,6 +251,19 @@
 		};
 	}
 
+	function multiarg(fn) {
+		return function(data) {
+			var n = -1;
+			var l = arguments.length;
+
+			while (++n < l) {
+				fn(this, arguments[n]);
+			}
+
+			return this;
+		}
+	}
+
 	mixin.resource = {
 		request: (function(types) {
 			return function request(type, object) {
@@ -252,50 +285,33 @@
 		},
 
 		delete: function(id) {
-			if (debug) { console.log('Resource: delete()', id); }
-
 			var resource = this;
-			var record = this.find(id);
-
-			this
-			.remove(id)
-			.request('delete', id)
-			.then(function deleteSuccess() {
-				// Success. Do nothing.
-			}, function deleteFail(error) {
-				console.log(error);
-				// Delete failed = put the record back into
-				// the resource
-				resource.add(record);
-			});
+			var request = resource.request('delete', id);
 
 			return this;
 		},
 
 		load: function load() {
 			var resource = this;
+			var request = resource.request('get');
 
-			return resource
-			.retrieve()
-			.request('get')
-			.then(function loadSuccess() {
-				return resource.store();
-			}, function loadFail(error) {
-				// Load failed
-				console.log(error);
-			});
+			return request;
 		},
 
 		save: function save() {
+			var resource = this;
 			var n = this.length;
 
 			while (n--) {
-				if (!isDefined(this[n].url) || this[n]._saved === false) {
-					this[n].save();
+				if (!isDefined(this[n].url)) {
+					resource.request('post', this[n]);
+				}
+				else if (this[n]._saved === false) {
+					resource.request('patch', this[n]);
 				}
 			}
 
-			return this.store();
+			return this;
 		},
 
 		// Get an event from memory or localForage or via AJAX.
@@ -317,16 +333,7 @@
 			});
 		},
 
-		update: function(data) {
-			if (isDefined(data.length)) {
-				Array.prototype.forEach.call(data, update, this);
-			}
-			else {
-				update.call(this, data);
-			}
-
-			return this;
-		},
+		update: multiarg(update),
 
 		sort: function(fn) {
 			return Array.prototype.sort.call(this, fn || byId);
@@ -391,7 +398,10 @@
 		    		// Define properties that rely on resource.
 		    		url: {
 		    			get: function() {
-		    				if (url && isDefined(this[resource.index]) && (this[resource.index] > -1)) {
+		    				// Where the key is a number, make sure it is positive. Negative
+		    				// numbers are false (unsaved) ids in some past projects.
+		    				if (url && isDefined(this[resource.index]) &&
+		    				    (typeof this[resource.index] !== 'number' || this[resource.index] > -1)) {
 		    					return url + '/' + this[resource.index];
 		    				}
 		    			},
