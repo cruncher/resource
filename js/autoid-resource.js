@@ -25,11 +25,27 @@
 	}
 
 	window.AutoIdResource = function(url, settings) {
-		var options = extend({}, settings);
+		var options = extend({ properties: {} }, settings);
 
 		options.setup = function setup(resource) {
 			resource.on('add', addId);
 			settings.setup && settings.setup(resource);
+		};
+
+		options.properties.url = {
+			get: function() {
+				// Where the key is a number, make sure it is positive. Negative
+				// numbers are unsaved ids.
+				if (url && isDefined(this[resource.index]) &&
+				   (typeof this[resource.index] !== 'number' || this[resource.index] > -1)) {
+					return url + '/' + this[resource.index];
+				}
+			},
+			set: function(url) {
+				console.log('Resource: trying to set resource url. Dont.', url);
+			},
+			enumerable: false,
+			configurable: true
 		};
 
 		return Resource(url, options);

@@ -1,11 +1,15 @@
-(function(window, Sparky, mixin) {
+(function(window, Sparky, mixin, localforage) {
 	"use strict";
 
 	var debug = window.debug !== false;
 
-	var failedPromise = new Promise(function(accept, reject) {
-		reject('Object not found in resource.');
-	});
+	var failedResourcePromise = new Promise(function(accept, reject) {
+	    	reject({ message: 'Object not found in resource.' });
+	    });
+
+	var failedStoragePromise = new Promise(function(accept, reject) {
+	    	reject({ message: 'Object not found in storage.' });
+	    });
 
 	var itemPrototype = Object.defineProperties({}, {
 		save: {
@@ -26,7 +30,7 @@
 					console.log('SAVE failed - object not valid', this);
 				}
 
-				return failedPromise;
+				return failedResourcePromise;
 			}
 		},
 
@@ -44,7 +48,8 @@
 	};
 
 	function logError(error) {
-		console.error(error.stack);
+		if (error.message) { console.log('Resource:', error.message); }
+		if (error.stack)   { console.error(error.stack); }
 	}
 
 	function noop() {}
@@ -73,9 +78,7 @@
 		return obj;
 	}
 
-	function create(data) {
-		var resource = this;
-
+	function create(resource, data) {
 		if (data && resource.find(data)) {
 			throw new Error('resource.create() - Trying to create object with index of existing object. Cant do that.');
 			return;
@@ -89,15 +92,12 @@
 		return object;
 	}
 
-	function update(resource, object) {
-		var item = resource.find(object);
+	function update(resource, data) {
+		var object = resource.find(data);
 
-		if (item) {
-			extend(item, object);
-			return;
-		}
-
-		create.call(resource, object);
+		return object ?
+			extend(object, data) :
+			create(resource, data) ;
 	}
 
 	function setSaved(object) {
@@ -122,7 +122,7 @@
 			object :
 			object[resource.index] ;
 
-		if (!isDefined(key)) { return failedPromise; }
+		if (!isDefined(key)) { return failedResourcePromise; }
 
 		return jQuery.ajax({
 				type: 'get',
@@ -171,7 +171,7 @@
 		}
 
 		if (!isDefined(object[key])) {
-			return failedPromise;
+			return failedResourcePromise;
 		}
 
 		return jQuery.ajax({
@@ -198,7 +198,7 @@
 
 		var key = object[resource.index];
 
-		if (!isDefined(key)) { return failedPromise; }
+		if (!isDefined(key)) { return failedResourcePromise; }
 
 		resource.remove(object);
 
@@ -255,25 +255,110 @@
 		}
 	}
 
+	function spliceByKey(array, key, value) {
+		var n = array.length;
+
+		while (n--) {
+			if (array[n][key] !== value) {
+				array.splice(n, 1);
+			}
+		}
+
+		return array;
+	}
+
+	function createChooser(methods) {
+		return function choose(method, id) {
+			return methods[method](this, id);
+		};
+	}
+
 	mixin.resource = {
-		request: (function(types) {
-			return function request(type, object) {
-				if (!types[type]) { throw new Error('Resource: request("' + type + '") is not a request type.'); }
-				return types[type](this, object);
-			};
-		})({
+		create: function(data) {
+			return create(this, data);
+		},
+
+		update: multiarg(update),
+
+		request: createChooser({
 			'get': requestGet,
 			'post': requestPost,
 			'delete': requestDelete,
 			'patch': requestPatch
 		}),
 
-		create: function(data) {
-			if (debug) { console.log('Resource: create()', data); }
-			return arguments.length > 1 ?
-				Array.prototype.map.call(arguments, create, this) :
-				create.call(this, data) ;
-		},
+		// Wrap our storage implementation, currently using localforage,
+		// in the .storage() method.
+		storage: createChooser({
+			'set': function storageSet(resource, object) {
+				var id;
+
+				if (object) {
+					id = object[resource.index];
+
+					// Replace just this object in the stored array. We have to
+					// get the stored array before we can do that.
+					return localforage
+					.getItem(resource.url)
+					.then(function(array) {
+						// The resource has not yet been stored. Store that
+						// subset of the resource containing this object.
+						if (!array) {
+							return localforage.setItem(resource.url, [object]);
+						}
+
+						// Find the item in array that has the id of object and
+						// replace it with object.
+						var n = array.length;
+						while (n--) {
+							if (array[n][resource.index] === id) {
+								array.splice(n, 1, object);
+								break;
+							}
+						}
+
+						// If n has hit bottom, no object has been replaced.
+						// Push the object.
+						if (n === -1) {	array.push(object); }
+
+						return localforage.setItem(resource.url, array);
+					})
+					.then(function(array) {
+						// Prepare the array so it contains only those objects that
+						// were changed.
+						return spliceByKey(array, resource.index, id);
+					})
+					.catch(logError);
+				}
+
+				return localforage
+				// IndexedDB complains if we try to set the resource directly,
+				// so we cast it to a JSON compatible object first. Not sure
+				// what the problem is.
+				.setItem(resource.url, resource.toJSON())
+				.catch(logError);
+			},
+
+			'get': function storageGet(resource, id) {
+				return localforage
+				.getItem(resource.url)
+				.then(function(array) {
+					// If no id was passed, return the whole set.
+					if (!isDefined(id)) { return array || []; }
+
+					// Otherwise return the object with id.
+					var n = array.length;
+
+					// Splice out any entries that don't have id.
+					return spliceByKey(array, resource.index, id);
+				})
+				.catch(logError);
+			},
+			
+			'remove': function storageRemove(resource, id) {
+				// Remove from storage
+			}
+		}),
 
 		delete: function(id) {
 			var resource = this;
@@ -324,14 +409,50 @@
 			});
 		},
 
-		update: multiarg(update),
-
 		sort: function(fn) {
 			return Array.prototype.sort.call(this, fn || byId);
 		},
 
-		store: returnThis,
-		retrieve: returnThis
+		store: function(id) {
+			var resource = this;
+			var object;
+
+			if (isDefined(id)) {
+				object = resource.find(id);
+
+				if (!object) {
+					return failedResourcePromise
+					.catch(logError);
+				}
+			}
+
+			return resource
+			.storage('set', object)
+			.then(function(array) {
+				// Return an array of resource objects that were stored.
+				return array.map(function(object) {
+					return resource.find(object);
+				});
+			})
+			.catch(logError);
+		},
+
+		retrieve: function(id) {
+			var resource = this;
+
+			return resource
+			.storage('get', id)
+			.then(function(array) {
+				resource.update.apply(resource, array);
+
+				// Return an array of all objects that have just been added
+				// or updated by the request.
+				return array.map(function(object) {
+					return resource.find(object);
+				});
+			})
+			.catch(logError);
+		}
 	};
 
 	var resourcePrototype = Sparky.extend({}, mixin.storage, mixin.events, mixin.array, mixin.collection, mixin.resource);
@@ -389,10 +510,7 @@
 		    		// Define properties that rely on resource.
 		    		url: {
 		    			get: function() {
-		    				// Where the key is a number, make sure it is positive. Negative
-		    				// numbers are false (unsaved) ids in some past projects.
-		    				if (url && isDefined(this[resource.index]) &&
-		    				    (typeof this[resource.index] !== 'number' || this[resource.index] > -1)) {
+		    				if (url && isDefined(this[resource.index])) {
 		    					return url + '/' + this[resource.index];
 		    				}
 		    			},
@@ -428,4 +546,4 @@
 	Resource.prototype = resourcePrototype;
 
 	window.Resource = Resource;
-})(window, window.Sparky, window.mixin);
+})(window, window.Sparky, window.mixin, window.localforage);
