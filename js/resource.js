@@ -12,6 +12,12 @@
 	    });
 
 	var itemPrototype = Object.defineProperties({}, {
+		load: {
+			value: function load() {
+				
+			}
+		},
+
 		save: {
 			value: function save() {
 				console.log('Resource: object.save()', this);
@@ -31,6 +37,33 @@
 				}
 
 				return failedResourcePromise;
+			}
+		},
+
+		store: {
+			value: function store() {
+				var object = this;
+
+				return object
+				.storage('set')
+				.then(function(data) {
+					return object;
+				})
+				.catch(logError);
+			}
+		},
+
+		retrieve: {
+			value: function retrieve() {
+				var object = this;
+
+				return object
+				.storage('get')
+				.then(function(data) {
+					extend(object, data);
+					return object;
+				})
+				.catch(logError);
 			}
 		},
 
@@ -110,11 +143,6 @@
 					type: 'get',
 					url: resource.url
 				})
-				.then(function multiResponse(response) {
-					response.forEach(setSaved);
-					resource.update.apply(resource, response);
-					return resource;
-				})
 				.fail(logError);
 		}
 
@@ -128,11 +156,10 @@
 				type: 'get',
 				url: resource.url + '/' + key
 			})
-			.then(function singleResponse(response) {
-				setSaved(response);
-				return resource
-					.update(response)
-					.find(response);
+			.then(function singleResponse(data) {
+				// .request() is gauranteed to resolve to an
+				// array. Make it so.
+				return [data];
 			})
 			.fail(logError);
 	}
@@ -273,6 +300,12 @@
 		};
 	}
 
+	function isValue(object) {
+		return typeof object === 'string' ||
+			typeof object === 'number' ||
+			object === undefined;
+	}
+
 	mixin.resource = {
 		create: function(data) {
 			return create(this, data);
@@ -339,12 +372,14 @@
 				.catch(logError);
 			},
 
-			'get': function storageGet(resource, id) {
+			'get': function storageGet(resource, object) {
+				var id = isValue(object) ? object : object[resource.index] ;
+
 				return localforage
 				.getItem(resource.url)
 				.then(function(array) {
 					// If no id was passed, return the whole set.
-					if (!isDefined(id)) { return array || []; }
+					if (object === undefined) { return array || []; }
 
 					// Otherwise return the object with id.
 					var n = array.length;
@@ -355,8 +390,42 @@
 				.catch(logError);
 			},
 			
-			'remove': function storageRemove(resource, id) {
-				// Remove from storage
+			'remove': function storageRemove(resource, object) {
+				var id = isValue(object) ? object : object[resource.index] ;
+
+				return localforage
+				.getItem(resource.url)
+				.then(function(array) {
+					// If no object was passed, remove the whole caboodle.
+					if (object === undefined) {
+						console.log('REMOVE WHOLE CABOODLE');
+						return localforage
+						.removeItem(resource.url)
+						.then(function() {
+							return array;
+						});
+					}
+
+					var n = array.length;
+					var removed = [];
+
+					while (n--) {
+						if (array[n][resource.index] === id) {
+							removed.push.apply(removed, array.splice(n, 1));
+						}
+					}
+
+					console.log("ARRAY", array);
+					console.log("REMOVED", removed);
+
+					return localforage
+					.setItem(resource.url, array)
+					.then(function() {
+						console.log('SET RESOURCE');
+						return removed;
+					});
+				})
+				.catch(logError);
 			}
 		}),
 
@@ -369,9 +438,19 @@
 
 		load: function load() {
 			var resource = this;
-			var request = resource.request('get');
 
-			return request;
+			return resource
+			.request('get')
+			.then(function multiResponse(array) {
+				array.forEach(setSaved);
+				resource.update.apply(resource, array);
+
+				// Return an array of resource objects that
+				// were loaded.
+				return array.map(function(object) {
+					return resource.find(object);
+				});
+			});
 		},
 
 		save: function save() {
@@ -420,9 +499,10 @@
 			if (isDefined(id)) {
 				object = resource.find(id);
 
+				// If no object with that id is found, we can't very well
+				// store it now, can we? 
 				if (!object) {
-					return failedResourcePromise
-					.catch(logError);
+					return failedResourcePromise.catch(logError);
 				}
 			}
 
@@ -528,6 +608,17 @@
 			request: {
 				value: function request(method) {
 					return resource.request(method, this);
+				}
+			},
+
+			storage: {
+				value: function storage(method) {
+					// Return promise with just one object as value.
+					return resource
+					.storage(method, this)
+					.then(function(array) {
+						return array[0];
+					});
 				}
 			},
 
