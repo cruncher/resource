@@ -391,21 +391,19 @@
 			},
 			
 			'remove': function storageRemove(resource, object) {
+				// If no object was passed, remove the whole caboodle.
+				if (object === undefined) {
+					console.log('REMOVING THE WHOLE CABOODLE');
+					return localforage
+					.removeItem(resource.url)
+					.catch(logError);
+				}
+
 				var id = isValue(object) ? object : object[resource.index] ;
 
 				return localforage
 				.getItem(resource.url)
 				.then(function(array) {
-					// If no object was passed, remove the whole caboodle.
-					if (object === undefined) {
-						console.log('REMOVE WHOLE CABOODLE');
-						return localforage
-						.removeItem(resource.url)
-						.then(function() {
-							return array;
-						});
-					}
-
 					var n = array.length;
 					var removed = [];
 
