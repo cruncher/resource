@@ -18,30 +18,30 @@ fails silently without)
 
 ## resource methods
 
-- <code>.create(data)</code>
-- <code>.add(object)</code>
-- <code>.remove(id)</code>
-- <code>.find(id)</code>
-- <code>.get(property, value)</code>
-- <code>.set(property, value)</code>
+- .create(data)
+- .add(object)
+- .remove(id)
+- .find(id)
+- .get(property, value)
+- .set(property, value)
 
 ###### events
 
-- <code>.on(name, fn)</code>
-- <code>.off(name, fn)</code>
-- <code>.trigger(name, args ... )</code>
+- .on(name, fn)
+- .off(name, fn)
+- .trigger(name, args ... )
 
 ###### remote server
 
-- <code>.save()</code>
-- <code>.load()</code>
-- <code>.request(method)</code>
+- .save()
+- .load()
+- .request(method)
 
 ###### local store
 
-- <code>.store()</code>
-- <code>.retrieve()</code>
-- <code>.storage()</code>
+- .store()
+- .retrieve()
+- .storage()
 
 
 ### .create(data)
@@ -61,14 +61,14 @@ Returns a promise that resolves to an array of objects in <code>resource</code>
 that have been saved. Objects without an <code>id</code> are <code>PUT</code>,
 while objects with are <code>PATCH</code>ed.
 
-##### .save(id)
+####### .save(id)
 
 Sends a single object in <code>resource</code> to the server. Returns a promise
 that resolves to an array containing that one object on successful response.
 
 ### .load()
 
-##### .load(id)
+####### .load(id)
 
 Returns a promise that resolves to an array of objects in
 <code>resource</code> that have been loaded from the server.
@@ -82,7 +82,7 @@ that represents the response. The resource is not updated and the objects in
 resource are not changed. For that, use <code>.save()</code> and
 <code>.load()</code>.
 
-##### .request('get')
+####### .request('get')
 
 Get all objects from the sever.
 
@@ -90,11 +90,11 @@ Get all objects from the sever.
         // Array contains all loaded objects.
     });
 
-##### .request('put')
+####### .request('put')
 
-##### .request('patch')
+####### .request('patch')
 
-##### .request('delete')
+####### .request('delete')
 
 ### .store()
 
@@ -102,11 +102,11 @@ Stores the resource locally. Returns a promise that resolves to an array of
 objects in <code>resource</code> that were sent to storage. Depends on the
 <code>localforage</code> library, but fails silently without.
 
-##### .store(id)
+####### .store(id)
 
 ### .retrieve()
 
-##### .retrieve(id)
+####### .retrieve(id)
 
 Returns a promise that resolves to an array of all objects in
 <code>resource</code> that have been retrieved from storage.
@@ -122,10 +122,10 @@ The resource is not updated and the objects in resource are not changed.
 To update the resource and get an array of objects that have been changed use
 <code>.store()</code> and <code>.retrieve()</code>.
 
-##### .storage('set')
-##### .storage('set', object)
+####### .storage('set')
+####### .storage('set', object)
 
-##### .storage('get')
+####### .storage('get')
 
 Get all objects from storage.
 
@@ -133,7 +133,7 @@ Get all objects from storage.
         // Array contains all retrieved objects.
     });
 
-##### .storage('get', id)
+####### .storage('get', id)
 
 Get a single object from storage.
 
@@ -141,17 +141,17 @@ Get a single object from storage.
         // The array contains the object with id 42 found in storage.
     });
 
-##### .storage('remove')
+####### .storage('remove')
 
-##### .storage('remove', id)
+####### .storage('remove', id)
 
 ### resource properties
 
-##### .index <small>string</small>
+####### .index <small>string</small>
 
 Name of property to use as id
 
-##### .properties <small>object</small>
+####### .properties <small>object</small>
 
 An object containing properties to be defined on all objects created with
 <code>resource.create()</code>.
