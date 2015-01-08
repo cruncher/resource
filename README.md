@@ -5,8 +5,9 @@ A <code>Resource</code> constructor for JS.
 
     var resource = Resource(url, options);
 
-Creates an array-like object that loads and saves RESTfully to the URL, and
-stores and retrieves locally if <code>localforage</code> is available.
+Creates an array-like object that loads and saves RESTfully to the
+<code>url</code>, and stores and retrieves locally if <code>localforage</code>
+is available.
 
 ### Dependencies
 
@@ -17,12 +18,27 @@ fails silently without)
 
 ## resource methods
 
+### .create(data)
+
+Creates an object and stores it in <code>resource</code>.
+
+    var item = resource.create({
+        id: 42
+    });
+
+The <code>id</code> of the object is appended to <code>resource.url</code> when
+server requests are made.
+
 ### .save()
+
+Returns a promise that resolves to an array of objects in <code>resource</code>
+that have been saved. Objects without an <code>id</code> are <code>PUT</code>,
+while objects with are <code>PATCH</code>ed.
 
 ### .save(id)
 
-Returns a promise that resolves to an array of objects in
-<code>resource</code> that have been saved.
+Sends a single object in <code>resource</code> to the server. Returns a promise
+that resolves to an array containing that one object on successful response.
 
 ### .load()
 
@@ -30,6 +46,8 @@ Returns a promise that resolves to an array of objects in
 
 Returns a promise that resolves to an array of all objects in
 <code>resource</code> that have been retrieved from storage.
+
+### .delete()
 
 ### .request(method, object)
 
@@ -99,3 +117,10 @@ Get a single object from storage.
 #### .storage('remove')
 
 #### .storage('remove', id)
+
+### resource properties
+
+#### resource.properties <small>object</small>
+
+An object containing properties to be defined on all objects created with
+<code>resource.create()</code>.
