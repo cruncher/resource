@@ -72,10 +72,11 @@ Get all objects from the sever.
 
 ### .store()
 
-##### .store(id)
+Stores the resource locally. Returns a promise that resolves to an array of 
+objects in <code>resource</code> that were sent to storage. Depends on the
+<code>localforage</code> library, but fails silently without.
 
-Returns a promise that resolves to an array of all objects in
-<code>resource</code> that have been sent to storage.
+##### .store(id)
 
 ### .retrieve()
 
