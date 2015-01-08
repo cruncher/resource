@@ -41,7 +41,7 @@ fails silently without)
 
 - .store()
 - .retrieve()
-- .storage()
+- .storage(method)
 
 
 ### .create(data)
