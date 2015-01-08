@@ -6,8 +6,7 @@ A <code>Resource</code> constructor for JS.
     var resource = Resource(url, options);
 
 Creates an array-like object that loads and saves RESTfully to the URL, and
-stores and retrieves locally if
-<a href="https://github.com/mozilla/localForage">localforage</a> is available.
+stores and retrieves locally if <code>localforage</code> is available.
 
 ### Dependencies
 
