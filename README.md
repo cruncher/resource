@@ -1,17 +1,20 @@
-resource
+Resource
 ========
 
-RESTful Resource constructor for JS 
+A <code>Resource</code> constructor for JS.
 
     var resource = Resource(url, options);
 
-Creates an array-like object that loads and saves to the URL.
+Creates an array-like object that loads and saves RESTfully to the URL, and
+stores and retrieves locally if
+<a href="https://github.com/mozilla/localForage">localforage</a> is available.
 
 ### Dependencies
 
-- jQuery
-- Sparky.Collection
-- localforage (optional, fails silently without)
+- <a href="http://jquery.com/">jQuery</a>
+- <a href="https://github.com/cruncher/sparky">Sparky.Collection</a>
+- <a href="https://github.com/mozilla/localForage">localforage</a> (optional,
+fails silently without)
 
 ## resource methods
 
@@ -76,7 +79,6 @@ To update the resource and get an array of objects that have been changed use
 <code>.store()</code> and <code>.retrieve()</code>.
 
 #### .storage('set')
-
 #### .storage('set', object)
 
 #### .storage('get')
@@ -91,10 +93,8 @@ Get all objects from storage.
 
 Get a single object from storage.
 
-    resource.storage('get', 0).then(function(array) {
-        // Assuming there is an object with id 0 in storage,
-        // the array contains it.
-        // array === [{ id: 0 }]
+    resource.storage('get', 42).then(function(array) {
+        // The array contains the object with id 42 found in storage.
     });
 
 #### .storage('remove')
