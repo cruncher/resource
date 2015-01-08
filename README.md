@@ -13,7 +13,7 @@ Creates an array-like object that loads and saves to the URL.
 - Sparky.Collection
 - localforage (optional, fails silently without)
 
-## <code>resource</code> methods
+## resource methods
 
 ### .save()
 
