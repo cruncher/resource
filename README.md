@@ -16,7 +16,7 @@ is available.
 - <a href="https://github.com/mozilla/localForage">localforage</a> (optional,
 fails silently without)
 
-## resource methods
+### resource methods
 
 - .create(data)
 - .add(object)
@@ -43,7 +43,7 @@ fails silently without)
 - .retrieve()
 - .storage(method)
 
-## model methods
+### model methods
 
 - .destroy()
 
