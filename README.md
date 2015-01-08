@@ -18,6 +18,32 @@ fails silently without)
 
 ## resource methods
 
+- <code>.create(data)</code>
+- <code>.add(object)</code>
+- <code>.remove(id)</code>
+- <code>.find(id)</code>
+- <code>.get(property, value)</code>
+- <code>.set(property, value)</code>
+
+###### events
+
+- <code>.on(name, fn)</code>
+- <code>.off(name, fn)</code>
+- <code>.trigger(name, args ... )</code>
+
+###### remote server
+
+- <code>.save()</code>
+- <code>.load()</code>
+- <code>.request(method)</code>
+
+###### local store
+
+- <code>.store()</code>
+- <code>.retrieve()</code>
+- <code>.storage()</code>
+
+
 ### .create(data)
 
 Creates an object and stores it in <code>resource</code>.
@@ -121,7 +147,11 @@ Get a single object from storage.
 
 ### resource properties
 
-##### resource.properties <small>object</small>
+##### .index <small>string</small>
+
+Name of property to use as id
+
+##### .properties <small>object</small>
 
 An object containing properties to be defined on all objects created with
 <code>resource.create()</code>.
