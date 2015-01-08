@@ -35,14 +35,14 @@ Returns a promise that resolves to an array of objects in <code>resource</code>
 that have been saved. Objects without an <code>id</code> are <code>PUT</code>,
 while objects with are <code>PATCH</code>ed.
 
-### .save(id)
+#### .save(id)
 
 Sends a single object in <code>resource</code> to the server. Returns a promise
 that resolves to an array containing that one object on successful response.
 
 ### .load()
 
-### .load(id)
+#### .load(id)
 
 Returns a promise that resolves to an array of objects in
 <code>resource</code> that have been loaded from the server.
@@ -72,14 +72,14 @@ Get all objects from the sever.
 
 ### .store()
 
-### .store(id)
+#### .store(id)
 
 Returns a promise that resolves to an array of all objects in
 <code>resource</code> that have been sent to storage.
 
 ### .retrieve()
 
-### .retrieve(id)
+#### .retrieve(id)
 
 Returns a promise that resolves to an array of all objects in
 <code>resource</code> that have been retrieved from storage.
