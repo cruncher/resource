@@ -13,8 +13,8 @@ is available.
 
 - <a href="http://jquery.com/">jQuery</a>
 - <a href="https://github.com/cruncher/sparky">Sparky.Collection</a>
-- <a href="https://github.com/mozilla/localForage">localforage</a> (optional,
-fails silently without)
+- <a href="https://github.com/mozilla/localForage">localforage</a> [optional,
+fails silently without]
 
 ### resource methods
 
@@ -217,7 +217,7 @@ objects in <code>resource</code> that were sent to storage. Depends on the
 Returns a promise that resolves to an array of all objects in
 <code>resource</code> that have been retrieved from storage.
 
-### .storage(method, object)
+### .storage(method)
 
 Stores and retrieves data from local storage. Depends on the
 <code>localforage</code> library, but fails silently without.
