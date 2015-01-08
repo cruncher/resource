@@ -44,8 +44,8 @@ that resolves to an array containing that one object on successful response.
 
 ### .load(id)
 
-Returns a promise that resolves to an array of all objects in
-<code>resource</code> that have been retrieved from storage.
+Returns a promise that resolves to an array of objects in
+<code>resource</code> that have been loaded from the server.
 
 ### .delete()
 
