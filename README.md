@@ -22,7 +22,7 @@ fails silently without)
 - .add(object)
 - .remove(id)
 - .find(id)
-- .get(property, value)
+- .get(property)
 - .set(property, value)
 
 ###### events
