@@ -40,10 +40,10 @@ resource are not changed. For that, use <code>.save()</code> and
 
 #### .request('get')
 
-Get all objects from storage.
+Get all objects from the sever.
 
-    resource.storage('get').then(function(array) {
-        // Array contains all retrieved objects.
+    resource.request('get').then(function(array) {
+        // Array contains all loaded objects.
     });
 
 #### .request('put')
