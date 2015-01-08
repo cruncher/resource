@@ -43,6 +43,23 @@ fails silently without)
 - .retrieve()
 - .storage(method)
 
+## model methods
+
+- .destroy()
+
+###### remote server
+
+- .save()
+- .load()
+- .request(method)
+
+###### local store
+
+- .store()
+- .retrieve()
+- .storage(method)
+
+## resource methods
 
 ### .create(data)
 
@@ -155,3 +172,58 @@ Name of property to use as id
 
 An object containing properties to be defined on all objects created with
 <code>resource.create()</code>.
+
+## model methods
+
+
+
+### .save()
+
+Returns a promise that resolves to an array of objects in <code>resource</code>
+that have been saved. Objects without an <code>id</code> are <code>PUT</code>,
+while objects with are <code>PATCH</code>ed.
+
+###### .save(id)
+
+Sends a single object in <code>resource</code> to the server. Returns a promise
+that resolves to an array containing that one object on successful response.
+
+### .load()
+
+###### .load(id)
+
+Returns a promise that resolves to an array of objects in
+<code>resource</code> that have been loaded from the server.
+
+### .delete()
+
+### .request(method)
+
+Makes requests to the remote server. Returns a jQuery deferred (like a promise)
+that represents the response.
+
+### .store()
+
+Stores the resource locally. Returns a promise that resolves to an array of 
+objects in <code>resource</code> that were sent to storage. Depends on the
+<code>localforage</code> library, but fails silently without.
+
+###### .store(id)
+
+### .retrieve()
+
+###### .retrieve(id)
+
+Returns a promise that resolves to an array of all objects in
+<code>resource</code> that have been retrieved from storage.
+
+### .storage(method, object)
+
+Stores and retrieves data from local storage. Depends on the
+<code>localforage</code> library, but fails silently without.
+
+Returns a promise that resolves to an array of all objects that have been
+updated in storage. These are not the same objects that are in the resource.
+The resource is not updated and the objects in resource are not changed.
+To update the resource and get an array of objects that have been changed use
+<code>.store()</code> and <code>.retrieve()</code>.
