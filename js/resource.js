@@ -413,9 +413,6 @@
 						}
 					}
 
-					console.log("ARRAY", array);
-					console.log("REMOVED", removed);
-
 					return localforage
 					.setItem(resource.url, array)
 					.then(function() {
