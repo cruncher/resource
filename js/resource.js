@@ -140,7 +140,7 @@
 	function requestGet(resource, object) {
 		if (!isDefined(object)) {
 			return jQuery.ajax({
-					type: 'get',
+					type: resource.requestURL('get'),
 					url: resource.url
 				})
 				.fail(logError);
@@ -154,7 +154,7 @@
 
 		return jQuery.ajax({
 				type: 'get',
-				url: resource.url + '/' + key
+				url: resource.requestURL('get', object),
 			})
 			.then(function singleResponse(data) {
 				// .request() is gauranteed to resolve to an
@@ -176,7 +176,7 @@
 
 		return jQuery.ajax({
 				type: 'post',
-				url: resource.url,
+				url: resource.requestURL('post', object),
 				data: object,
 				contentType: 'application/json; charset=UTF-8'
 			})
@@ -204,7 +204,7 @@
 
 		return jQuery.ajax({
 				type: 'PATCH',
-				url: resource.url + '/' + object[key],
+				url: resource.requestURL('patch', object),
 				data: object,
 				contentType: 'application/json; charset=UTF-8'
 			})
@@ -233,7 +233,7 @@
 
 		return jQuery.ajax({
 				type: 'DELETE',
-				url: resource.url + '/' + key
+				url: resource.requestURL('delete', object)
 			})
 			.then(function deleteSuccess() {
 				// Success. Do nothing.
@@ -245,6 +245,18 @@
 				resource.add(record);
 			})
 			.fail(logError);
+	}
+
+	function resourceURL(resource) {
+		return resource.url;
+	}
+
+	function objectURL(resource, object) {
+		return resource.url + '/' + object[resource.index];
+	}
+
+	function resourceOrObjectURL(resource, object) {
+		return resource.url + (object ? '/' + object[resource.index] : '');
 	}
 
 	function Throttle(fn) {
@@ -320,6 +332,13 @@
 			'post': requestPost,
 			'delete': requestDelete,
 			'patch': requestPatch
+		}),
+
+		requestURL: createChooser({
+			'get': resourceOrObjectURL,
+			'post': resourceURL,
+			'delete': objectURL,
+			'patch': objectURL
 		}),
 
 		// Wrap our storage implementation, currently using localforage,
