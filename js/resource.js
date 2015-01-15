@@ -177,7 +177,8 @@
 		return jQuery.ajax({
 				type: 'post',
 				url: resource.url,
-				data: object
+				data: object,
+				contentType: 'application/json; charset=UTF-8'
 			})
 			.then(function(response) {
 				extend(object, response);
@@ -204,7 +205,8 @@
 		return jQuery.ajax({
 				type: 'PATCH',
 				url: resource.url + '/' + object[key],
-				data: object
+				data: object,
+				contentType: 'application/json; charset=UTF-8'
 			})
 			.then(function(response) {
 				extend(object, response);
