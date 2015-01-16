@@ -141,9 +141,8 @@
 		}
 
 		var object = Object.create(resource.prototype, resource.properties);
-
 		if (data) { extend(object, data); }
-
+		resource.trigger('create', object);
 		resource.add(object);
 		return object;
 	}
@@ -200,8 +199,8 @@
 		return jQuery.ajax({
 				type: 'post',
 				url: resource.requestURL('post', object),
-				data: object,
-				contentType: 'application/json; charset=UTF-8'
+				data: JSON.stringify(object),
+				contentType: 'application/json'
 			})
 			.then(function(response) {
 				extend(object, response);
@@ -228,8 +227,8 @@
 		return jQuery.ajax({
 				type: 'PATCH',
 				url: resource.requestURL('patch', object),
-				data: object,
-				contentType: 'application/json; charset=UTF-8'
+				data: JSON.stringify(object),
+				contentType: 'application/json'
 			})
 			.then(function(response) {
 				extend(object, response);
