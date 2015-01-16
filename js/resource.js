@@ -270,15 +270,17 @@
 	}
 
 	function resourceURL(resource) {
-		return resource.url;
+		return (resource.url === '/' ? '' : resource.url);
 	}
 
 	function objectURL(resource, object) {
-		return resource.url + '/' + object[resource.index];
+		return resourceURL(resource) + '/' + object[resource.index];
 	}
 
 	function resourceOrObjectURL(resource, object) {
-		return resource.url + (object ? '/' + object[resource.index] : '');
+		return object ?
+			objectURL(resource, object) :
+			resourceURL(resource) ;
 	}
 
 	function Throttle(fn) {
