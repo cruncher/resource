@@ -16,7 +16,14 @@
 	var itemPrototype = Object.defineProperties({}, {
 		load: {
 			value: function load() {
-				
+				var object = this;
+
+				return this
+				.request('get')
+				.then(function(data) {
+					extend(object, data);
+					return object;
+				});
 			}
 		},
 
