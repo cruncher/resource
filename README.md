@@ -16,6 +16,24 @@ is available.
 - <a href="https://github.com/mozilla/localForage">localforage</a> [optional,
 fails silently without]
 
+## Resource(url, options)
+
+Creates a <code>resource</code>, an array-like object that stores model objects.
+
+    var resource = Resource('/path/to/resource');
+
+Pass in an options object to change the behaviour of <code>resource</code>.
+
+    var resource = Resource('/path/to/resource', {
+        index: 'uuid'
+    });
+
+The index is the name of the model property that <code>resource</code> appends to the
+resource URL to form a URL for a model. By default <code>index</code> is <code>'id'</code>.
+It is also the key used by <code>.find(id)</code> and various other methods to uniquely
+identify models.
+
+
 ### resource methods
 
 - .create(data)
@@ -175,55 +193,32 @@ An object containing properties to be defined on all objects created with
 
 ## model methods
 
-
-
 ### .save()
 
-Returns a promise that resolves to an array of objects in <code>resource</code>
-that have been saved. Objects without an <code>id</code> are <code>PUT</code>,
-while objects with are <code>PATCH</code>ed.
-
-###### .save(id)
-
-Sends a single object in <code>resource</code> to the server. Returns a promise
-that resolves to an array containing that one object on successful response.
+Returns a promise that resolves to the updated model.
 
 ### .load()
 
-###### .load(id)
-
-Returns a promise that resolves to an array of objects in
-<code>resource</code> that have been loaded from the server.
+Returns a promise that resolves to the loaded model.
 
 ### .delete()
 
 ### .request(method)
 
 Makes requests to the remote server. Returns a jQuery deferred (like a promise)
-that represents the response.
+that represents the response. The model is not updated.
 
 ### .store()
 
-Stores the resource locally. Returns a promise that resolves to an array of 
-objects in <code>resource</code> that were sent to storage. Depends on the
-<code>localforage</code> library, but fails silently without.
-
-###### .store(id)
+Stores the model locally. Returns a promise that resolves to the model.
 
 ### .retrieve()
 
-###### .retrieve(id)
-
-Returns a promise that resolves to an array of all objects in
-<code>resource</code> that have been retrieved from storage.
+Retrieves the model locally. Returns a promise that resolves to the updated model.
 
 ### .storage(method)
 
-Stores and retrieves data from local storage. Depends on the
+Stores and retrieves the model from local storage. Depends on the
 <code>localforage</code> library, but fails silently without.
 
-Returns a promise that resolves to an array of all objects that have been
-updated in storage. These are not the same objects that are in the resource.
-The resource is not updated and the objects in resource are not changed.
-To update the resource and get an array of objects that have been changed use
-<code>.store()</code> and <code>.retrieve()</code>.
+Returns a promise that resolves to data returned from storage.
