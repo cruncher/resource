@@ -16,6 +16,24 @@ is available.
 - <a href="https://github.com/mozilla/localForage">localforage</a> [optional,
 fails silently without]
 
+## Resource(url, options)
+
+Creates a <code>resource</code>, an array-like object that stores model objects.
+
+    var resource = Resource('/path/to/resource');
+
+Pass in an options object to change the behaviour of <code>resource</code>.
+
+    var resource = Resource('/path/to/resource', {
+        index: 'uuid'
+    });
+
+The index is the name of the model property that <code>resource</code> appends to the
+resource URL to form a URL for a model. By default <code>index</code> is <code>'id'</code>.
+It is also the key used by <code>.find(id)</code> and various other methods to uniquely
+identify models.
+
+
 ### resource methods
 
 - .create(data)
