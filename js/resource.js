@@ -124,7 +124,7 @@
 							obj1[key].push.apply(obj2[key]);
 						}
 						else if (Collection.isCollection(obj1[key])) {
-							obj1.remove();
+							obj1[key].remove();
 							obj1[key].push.apply(obj2[key]);
 						}
 						else {
