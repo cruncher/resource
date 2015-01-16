@@ -628,7 +628,8 @@
 		    		url: {
 		    			get: function() {
 		    				if (url && isDefined(this[resource.index])) {
-		    					return url + '/' + this[resource.index];
+		    					// Support resources instantiated with Resource('/')
+		    					return (url === '/' ? '' : url) + '/' + this[resource.index];
 		    				}
 		    			},
 		    			set: function(url) {
