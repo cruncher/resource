@@ -436,7 +436,6 @@
 					return localforage
 					.setItem(resource.url, array)
 					.then(function() {
-						console.log('SET RESOURCE');
 						return removed;
 					});
 				})
