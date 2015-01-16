@@ -3,6 +3,8 @@
 
 	var debug = window.debug !== false;
 
+	var Collection = Sparky.Collection;
+
 	var failedResourcePromise = new Promise(function(accept, reject) {
 	    	reject({ message: 'Object not found in resource.' });
 	    });
@@ -93,7 +95,11 @@
 		return val !== undefined && val !== null;
 	}
 
-	function extend(obj) {
+	function isArrayOrCollection(object) {
+		return Array.isArray(object) || Collection.isCollection(object);
+	}
+
+	function extend(obj1) {
 		var i = 0,
 		    length = arguments.length,
 		    obj2, key;
@@ -103,12 +109,29 @@
 
 			for (key in obj2) {
 				if (obj2.hasOwnProperty(key)) {
-					obj[key] = obj2[key];
+					// If key is an array or collection, replace the contents
+					// of the original with the contents of the incoming one.
+					if (obj1[key] && isArrayOrCollection(obj2[key])) {
+						if (Array.isArray(obj1[key])) {
+							obj1.length = 0;
+							obj1[key].push.apply(obj2[key]);
+						}
+						else if (Collection.isCollection(obj1[key])) {
+							obj1.remove();
+							obj1[key].push.apply(obj2[key]);
+						}
+						else {
+							obj1[key] = obj2[key];
+						}
+					}
+					else {
+						obj1[key] = obj2[key];
+					}
 				}
 			}
 		}
 
-		return obj;
+		return obj1;
 	}
 
 	function create(resource, data) {
