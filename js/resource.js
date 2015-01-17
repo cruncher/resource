@@ -29,20 +29,21 @@
 
 		save: {
 			value: function save() {
-				console.log('Resource: object.save()', this);
+				var object = this;
+				var request;
 
 				if (this.validate()) {
-					if (isDefined(this.url)) {
-						console.log('PATCH');
-						return this.request('patch');
-					}
-					else {
-						console.log('POST');
-						return this.request('post');
-					}
+					request = isDefined(this.url) ?
+						object.request('patch') :
+						object.request('post') ;
+
+					return request.then(function(data) {
+						extend(object, data);
+						return object;
+					});
 				}
 				else {
-					console.log('SAVE failed - object not valid', this);
+					console.log('Resource: cant save(): object not valid.', this);
 				}
 
 				return failedResourcePromise;
@@ -97,6 +98,7 @@
 	function noop() {}
 	function returnThis() { return this; }
 	function returnTrue() { return true; }
+	function get0(array) { return array[0]; }
 
 	function isDefined(val) {
 		return val !== undefined && val !== null;
@@ -106,6 +108,21 @@
 		return Array.isArray(object) || Collection.isCollection(object);
 	}
 
+	function removeUnfoundObjects(collection, array) {
+		var n = collection.length;
+		var ids = array.map(function(object) {
+		    	return object[collection.index];
+		    });
+		var id;
+
+		while (n--) {
+			id = collection[n][collection.index];
+			if (ids.indexOf(id) === -1) {
+				collection.splice(n, 1);
+			}
+		}
+	}
+
 	function extend(obj1) {
 		var i = 0,
 		    length = arguments.length,
@@ -113,7 +130,6 @@
 
 		while (++i < length) {
 			obj2 = arguments[i];
-
 			for (key in obj2) {
 				if (obj2.hasOwnProperty(key)) {
 					// If key is an array or collection, replace the contents
@@ -124,8 +140,13 @@
 							obj1[key].push.apply(obj2[key]);
 						}
 						else if (Collection.isCollection(obj1[key])) {
-							obj1[key].remove();
-							obj1[key].push.apply(obj2[key]);
+							obj1[key].update.apply(obj1[key], obj2[key]);
+							
+							// If collection and incoming lengths don't match we
+							// have to remove some things from the collection.
+							if (obj1[key].length !== obj2[key].length) {
+								removeUnfoundObjects(obj1[key], obj2[key]);
+							}
 						}
 						else {
 							obj1[key] = obj2[key];
@@ -641,9 +662,6 @@
 		    					return (url === '/' ? '' : url) + '/' + this[resource.index];
 		    				}
 		    			},
-		    			set: function(url) {
-		    				console.log('Resource: trying to set resource url. Dont.', url);
-		    			},
 		    			enumerable: false,
 		    			configurable: true
 		    		}
@@ -654,7 +672,10 @@
 		Object.defineProperties(resource.prototype, {
 			request: {
 				value: function request(method) {
-					return resource.request(method, this);
+					// Return promise with just one object as value.
+					return resource
+					.request(method, this)
+					.then(get0);
 				}
 			},
 
@@ -663,9 +684,7 @@
 					// Return promise with just one object as value.
 					return resource
 					.storage(method, this)
-					.then(function(array) {
-						return array[0];
-					});
+					.then(get0);
 				}
 			},
 
