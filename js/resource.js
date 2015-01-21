@@ -190,8 +190,8 @@
 	function requestGet(resource, object) {
 		if (!isDefined(object)) {
 			return jQuery.ajax({
-					type: resource.requestURL('get'),
-					url: resource.url
+					type: 'get',
+					url: resource.requestURL('get')
 				})
 				.fail(logError);
 		}
