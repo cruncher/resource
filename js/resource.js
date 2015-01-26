@@ -124,9 +124,9 @@
 	}
 
 	function extend(obj1) {
-		var i = 0,
-		    length = arguments.length,
-		    obj2, key;
+		var i = 0;
+		var length = arguments.length;
+		var obj2, key;
 
 		while (++i < length) {
 			obj2 = arguments[i];
