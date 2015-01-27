@@ -187,13 +187,23 @@
 		object._saved = true;
 	}
 
+	function request(method, url, data, contentType) {
+		// Wrap jQuery.ajax in a native promise.
+		return new Promise(function(accept, reject) {
+			jQuery.ajax({
+				type: method,
+				url: url,
+				data: data,
+				contentType: contentType
+			})
+			.then(accept, reject);
+		});
+	}
+
 	function requestGet(resource, object) {
 		if (!isDefined(object)) {
-			return jQuery.ajax({
-					type: 'get',
-					url: resource.requestURL('get')
-				})
-				.fail(logError);
+			return request('get', resource.requestURL('get'))
+				.catch(logError);
 		}
 
 		var key = typeof object === 'number' || typeof object === 'string' ?
@@ -202,16 +212,13 @@
 
 		if (!isDefined(key)) { return failedResourcePromise; }
 
-		return jQuery.ajax({
-				type: 'get',
-				url: resource.requestURL('get', object),
-			})
+		return request('get', resource.requestURL('get', key))
 			.then(function singleResponse(data) {
 				// .request() is gauranteed to resolve to an
 				// array. Make it so.
 				return [data];
 			})
-			.fail(logError);
+			.catch(logError);
 	}
 
 	function requestPost(resource, object) {
@@ -224,23 +231,21 @@
 
 		object._saving = true;
 
-		return jQuery.ajax({
-				type: 'post',
-				url: resource.requestURL('post', object),
-				data: JSON.stringify(object),
-				contentType: 'application/json'
-			})
+		return request(
+				'post',
+				resource.requestURL('post', object[resource.index]),
+				JSON.stringify(object),
+				'application/json'
+			)
 			.then(function(response) {
 				extend(object, response);
 				setSaved(object);
 				return object;
 			})
-			.fail(logError);
+			.catch(logError);
 	}
 
 	function requestPatch(resource, object) {
-		var key = resource.index;
-
 		object = resource.find(object);
 
 		// Cant patch this, it doesn't exist.
@@ -248,23 +253,25 @@
 			throw new Error('Resource: .request("patch", object) called without object.');
 		}
 
-		if (!isDefined(object[key])) {
+		var key = object[resource.index];
+
+		if (!isDefined(key)) {
 			return failedResourcePromise;
 		}
 
-		return jQuery.ajax({
-				type: 'PATCH',
-				url: resource.requestURL('patch', object),
-				data: JSON.stringify(object),
-				contentType: 'application/json'
-			})
+		return request(
+				'patch',
+				resource.requestURL('patch', key),
+				JSON.stringify(object),
+				'application/json'
+			)
 			.then(function(response) {
 				extend(object, response);
 				setSaved(object);
 
 				return object;
 			})
-			.fail(logError);
+			.catch(logError);
 	}
 
 	function requestDelete(resource, object) {
@@ -281,10 +288,7 @@
 
 		resource.remove(object);
 
-		return jQuery.ajax({
-				type: 'DELETE',
-				url: resource.requestURL('delete', object)
-			})
+		return request('delete', resource.requestURL('delete', key))
 			.then(function deleteSuccess() {
 				// Success. Do nothing.
 			}, function deleteFail(error) {
@@ -294,20 +298,20 @@
 				// the resource
 				resource.add(record);
 			})
-			.fail(logError);
+			.catch(logError);
 	}
 
 	function resourceURL(resource) {
 		return (resource.url === '/' ? '' : resource.url);
 	}
 
-	function objectURL(resource, object) {
-		return resourceURL(resource) + '/' + object[resource.index];
+	function objectURL(resource, key) {
+		return resourceURL(resource) + '/' + key;
 	}
 
-	function resourceOrObjectURL(resource, object) {
-		return object ?
-			objectURL(resource, object) :
+	function resourceOrObjectURL(resource, key) {
+		return isDefined(key) ?
+			objectURL(resource, key) :
 			resourceURL(resource) ;
 	}
 
@@ -503,6 +507,12 @@
 			return this;
 		},
 
+		// .load()
+		// .load(id)
+		//
+		// Returns a promise that resolves to an array of loaded and updated
+		// objects. Where id is passed in, the array contains 1 object.
+
 		load: function load() {
 			var resource = this;
 
@@ -536,23 +546,24 @@
 			return this;
 		},
 
-		// Get an event from memory or localForage or via AJAX.
+		// .fetch(id)
+		//
+		// Gets an object from the resource, or if not found, loads it from the
+		// server. Returns a promise that resolves to a single object.
 
 		fetch: function(id) {
 			var resource = this;
-			
-			return new Promise(function(resolve, reject) {
-				var object = resource.find(id);
+			var object = resource.find(id);
 
-				if (object) {
+			return object ?
+				new Promise(function(resolve, reject) {
 					resolve(object);
-					return;
-				}
-
-				resource.request('get', id).then(function(object) {
-					resolve(object);
-				}, reject);
-			});
+				}) :
+				resource
+				.load()
+				.then(function() {
+					return resource.find(id);
+				}) ;
 		},
 
 		sort: function(fn) {
