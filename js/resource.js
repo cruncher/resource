@@ -6,12 +6,14 @@
 	var Collection = Sparky.Collection;
 
 	var failedResourcePromise = new Promise(function(accept, reject) {
-	    	reject({ message: 'Object not found in resource.' });
-	    });
+	    	reject(new Error('Object not found in resource.'));
+	    })
+	    .catch(noop);
 
 	var failedStoragePromise = new Promise(function(accept, reject) {
-	    	reject({ message: 'Object not found in storage.' });
-	    });
+	    	reject(new Error('Object not found in storage.'));
+	    })
+	    .catch(noop);
 
 	var itemPrototype = Object.defineProperties({}, {
 		load: {
@@ -24,29 +26,6 @@
 					extend(object, data);
 					return object;
 				});
-			}
-		},
-
-		save: {
-			value: function save() {
-				var object = this;
-				var request;
-
-				if (this.validate()) {
-					request = isDefined(this.url) ?
-						object.request('patch') :
-						object.request('post') ;
-
-					return request.then(function(data) {
-						extend(object, data);
-						return object;
-					});
-				}
-				else {
-					console.log('Resource: cant save(): object not valid.', this);
-				}
-
-				return failedResourcePromise;
 			}
 		},
 
@@ -535,7 +514,7 @@
 			var n = this.length;
 
 			while (n--) {
-				if (!isDefined(this[n].url)) {
+				if (!isDefined(this[n][this.index])) {
 					resource.request('post', this[n]);
 				}
 				else if (this[n]._saved === false) {
@@ -645,7 +624,7 @@
 	var cache = {};
 
 	function Resource(url, settings) {
-		if (debug) { console.log('Resource: url:', '"' + url + '"', 'from cache:', !!cache[url]); }
+		if (debug) { console.log('Resource: "' + url + '"' + (cache[url] ? ' [from cache]' : '')); }
 		if (cache[url]) { return cache[url]; }
 
 		var options = extend({}, defaults, settings);
@@ -664,23 +643,30 @@
 		    	index:      { value: options.index },
 		    	length:     { value: 0, configurable: true, writable: true },
 		    	prototype:  { value: Object.create(itemPrototype) },
-		    	properties: { value: extend({
-		    		// Define properties that rely on resource.
-		    		url: {
-		    			get: function() {
-		    				if (url && isDefined(this[resource.index])) {
-		    					// Support resources instantiated with Resource('/')
-		    					return (url === '/' ? '' : url) + '/' + this[resource.index];
-		    				}
-		    			},
-		    			enumerable: false,
-		    			configurable: true
-		    		}
-		    	}, itemProperties, options.properties) }
+		    	properties: { value: extend(itemProperties, options.properties) }
 		    });
 
 		// Define methods that rely on resource.
 		Object.defineProperties(resource.prototype, {
+			save: {
+				value: function save() {
+					if (!this.validate()) {
+						console.log('Resource: cant save(): object not valid.', this);
+						return failedResourcePromise;
+					}
+
+					var object = this;
+					var request = isDefined(this[resource.index]) ?
+						object.request('patch') :
+						object.request('post') ;
+
+					return request.then(function(data) {
+						extend(object, data);
+						return object;
+					});
+				}
+			},
+
 			request: {
 				value: function request(method) {
 					// Return promise with just one object as value.
