@@ -16,6 +16,33 @@
 	    .catch(noop);
 
 	var itemPrototype = Object.defineProperties({}, {
+		save: {
+			value: function save() {
+				if (!this.validate()) {
+					console.log('Resource: cant save(): object not valid.', this);
+					return failedResourcePromise;
+				}
+
+				var object = this;
+				var request = this.saved ?
+					object.request('patch') :
+					object.request('post') ;
+
+				object.saving = true;
+
+				return request
+					.then(function(data) {
+						extend(object, data);
+						object.saving = false;
+						if (!data.saved) { object.saved = new Date().toISOString(); }
+						return object;
+					})
+					.catch(function() {
+						object.saving = false;
+					});
+			}
+		},
+
 		load: {
 			value: function load() {
 				var object = this;
@@ -63,10 +90,8 @@
 	});
 
 	var itemProperties = {
-		_saved:    { value: false,  writable: true, enumerable: false },
-		_saving:   { value: false,  writable: true, enumerable: false },
-		active:    { value: false,  writable: true, enumerable: false, configurable: true },
-		selected:  { value: false,  writable: true, enumerable: false, configurable: true }
+		saved:     { value: false,  writable: true, enumerable: false, configurable: true },
+		saving:    { value: false,  writable: true, enumerable: false, configurable: true }
 	};
 
 	function logError(error) {
@@ -162,8 +187,10 @@
 			create(resource, data) ;
 	}
 
-	function setSaved(object) {
-		object._saved = true;
+	function singleResponse(data) {
+		// .request() is gauranteed to resolve to an
+		// array. Make it so.
+		return [data];
 	}
 
 	function request(method, url, data, contentType) {
@@ -191,12 +218,10 @@
 
 		if (!isDefined(key)) { return failedResourcePromise; }
 
-		return request('get', resource.requestURL('get', key))
-			.then(function singleResponse(data) {
-				// .request() is gauranteed to resolve to an
-				// array. Make it so.
-				return [data];
-			})
+		var url = resource.requestURL('get', key);
+
+		return request('get', url)
+			.then(singleResponse)
 			.catch(logError);
 	}
 
@@ -208,19 +233,10 @@
 			throw new Error('Resource: .request("post", object) called, object not found in resource.');
 		}
 
-		object._saving = true;
+		var url = resource.requestURL('post', object[resource.index]);
 
-		return request(
-				'post',
-				resource.requestURL('post', object[resource.index]),
-				JSON.stringify(object),
-				'application/json'
-			)
-			.then(function(response) {
-				extend(object, response);
-				setSaved(object);
-				return object;
-			})
+		return request('post', url, JSON.stringify(object), 'application/json')
+			.then(singleResponse)
 			.catch(logError);
 	}
 
@@ -238,18 +254,10 @@
 			return failedResourcePromise;
 		}
 
-		return request(
-				'patch',
-				resource.requestURL('patch', key),
-				JSON.stringify(object),
-				'application/json'
-			)
-			.then(function(response) {
-				extend(object, response);
-				setSaved(object);
+		var url = resource.requestURL('patch', key);
 
-				return object;
-			})
+		return request('patch', url, JSON.stringify(object), 'application/json')
+			.then(singleResponse)
 			.catch(logError);
 	}
 
@@ -498,13 +506,18 @@
 			return resource
 			.request('get')
 			.then(function multiResponse(array) {
-				array.forEach(setSaved);
 				resource.update.apply(resource, array);
 
 				// Return an array of resource objects that
 				// were loaded.
-				return array.map(function(object) {
-					return resource.find(object);
+				return array.map(function(data, i) {
+					var object = resource.find(data);
+
+					if (!data.saved) {
+						object.saved = new Date().toISOString();
+					}
+
+					return object;
 				});
 			});
 		},
@@ -514,12 +527,7 @@
 			var n = this.length;
 
 			while (n--) {
-				if (!isDefined(this[n][this.index])) {
-					resource.request('post', this[n]);
-				}
-				else if (this[n]._saved === false) {
-					resource.request('patch', this[n]);
-				}
+				this[n].save();
 			}
 
 			return this;
@@ -648,25 +656,6 @@
 
 		// Define methods that rely on resource.
 		Object.defineProperties(resource.prototype, {
-			save: {
-				value: function save() {
-					if (!this.validate()) {
-						console.log('Resource: cant save(): object not valid.', this);
-						return failedResourcePromise;
-					}
-
-					var object = this;
-					var request = isDefined(this[resource.index]) ?
-						object.request('patch') :
-						object.request('post') ;
-
-					return request.then(function(data) {
-						extend(object, data);
-						return object;
-					});
-				}
-			},
-
 			request: {
 				value: function request(method) {
 					// Return promise with just one object as value.
