@@ -37,8 +37,10 @@
 						if (!data.saved) { object.saved = new Date().toISOString(); }
 						return object;
 					})
-					.catch(function() {
+					.catch(function(error) {
 						object.saving = false;
+						console.error(error.message);
+						console.trace(error.stack);
 					});
 			}
 		},
@@ -63,6 +65,7 @@
 				return object
 				.storage('set')
 				.then(function(data) {
+					object.stored = new Date().toJSON();
 					return object;
 				})
 				.catch(logError);
@@ -77,6 +80,9 @@
 				.storage('get')
 				.then(function(data) {
 					extend(object, data);
+					if (!object.stored) {
+						object.stored = new Date().toJSON();
+					}
 					return object;
 				})
 				.catch(logError);
@@ -90,6 +96,7 @@
 	});
 
 	var itemProperties = {
+		stored:    { value: false,  writable: true, enumerable: false, configurable: true },
 		saved:     { value: false,  writable: true, enumerable: false, configurable: true },
 		saving:    { value: false,  writable: true, enumerable: false, configurable: true }
 	};
@@ -102,7 +109,7 @@
 	function noop() {}
 	function returnThis() { return this; }
 	function returnTrue() { return true; }
-	function get0(array) { return array[0]; }
+	function get0(array) { return array && array[0]; }
 
 	function isDefined(val) {
 		return val !== undefined && val !== null;
@@ -514,7 +521,7 @@
 					var object = resource.find(data);
 
 					if (!data.saved) {
-						object.saved = new Date().toISOString();
+						object.saved = new Date().toJSON();
 					}
 
 					return object;
@@ -575,8 +582,10 @@
 			.storage('set', object)
 			.then(function(array) {
 				// Return an array of resource objects that were stored.
-				return array.map(function(object) {
-					return resource.find(object);
+				return array.map(function(data) {
+					var object = resource.find(data);
+					object.stored = new Date().toJSON();
+					return object;
 				});
 			})
 			.catch(logError);
@@ -592,8 +601,10 @@
 
 				// Return an array of all objects that have just been added
 				// or updated by the request.
-				return array.map(function(object) {
-					return resource.find(object);
+				return array.map(function(data) {
+					var object = resource.find(data);
+					if (!object.stored) { object.stored = new Date().toJSON(); }
+					return object;
 				});
 			})
 			.catch(logError);
