@@ -262,7 +262,7 @@
 	}
 
 	function requestDelete(resource, object) {
-		object = this.find(object);
+		object = resource.find(object);
 
 		// Cant delete this, it doesn't exist.
 		if (!isDefined(object)) {
