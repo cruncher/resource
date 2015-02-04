@@ -697,7 +697,12 @@
 		return resource;
 	};
 
+	function isResource(object) {
+		return Resource.prototype.isPrototypeOf(object);
+	}
+
 	Resource.prototype = resourcePrototype;
+	Resource.isResource = isResource;
 
 	window.Resource = Resource;
 })(window, window.Sparky, window.mixin, window.localforage);
