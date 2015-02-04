@@ -31,17 +31,26 @@
 				object.saving = true;
 
 				return request
-					.then(function(data) {
+				.then(function(data) {
+					if (data) {
 						extend(object, data);
-						object.saving = false;
 						if (!data.saved) { object.saved = new Date().toISOString(); }
-						return object;
-					})
-					.catch(function(error) {
-						object.saving = false;
-						console.error(error.message);
-						console.trace(error.stack);
-					});
+					}
+					else {
+						// data has not made it passed the validators, but the
+						// request has not failed so we have to assume it worked,
+						// but not update the object.
+						object.saved = new Date().toISOString();
+					}
+
+					object.saving = false;
+					return object;
+				})
+				.catch(function(error) {
+					object.saving = false;
+					console.error(error.message);
+					console.trace(error.stack);
+				});
 			}
 		},
 
@@ -52,7 +61,17 @@
 				return this
 				.request('get')
 				.then(function(data) {
-					extend(object, data);
+					if (data) {
+						extend(object, data);
+						if (!data.saved) { object.saved = new Date().toISOString(); }
+					}
+					else {
+						// data has not made it passed the validators, but the
+						// request has not failed so we have to assume it worked,
+						// but not update the object.
+						object.saved = new Date().toISOString();
+					}
+
 					return object;
 				});
 			}
@@ -87,11 +106,6 @@
 				})
 				.catch(logError);
 			}
-		},
-
-		validate: {
-			value: returnTrue,
-			writable: true
 		}
 	});
 
@@ -181,6 +195,8 @@
 
 		var object = Object.create(resource.prototype, resource.properties);
 		if (data) { extend(object, data); }
+
+		resource.validate(object);
 		resource.trigger('create', object);
 		resource.add(object);
 		return object;
@@ -370,6 +386,14 @@
 			object === undefined;
 	}
 
+	function validate(resource, data, name) {
+		var validator = typeof resource.validators[name] === 'string' ?
+			validators[resource.validators[name]] :
+			resource.validators[name] ;
+
+		return !!validator(data, name);
+	}
+
 	mixin.resource = {
 		create: function(data) {
 			return create(this, data);
@@ -377,7 +401,36 @@
 
 		update: multiarg(update),
 
-		request: createChooser({
+		request: (function(methods) {
+			return function(method, id) {
+				var resource = this;
+
+				return methods[method](this, id)
+				.then(function(array) {
+					if (array === undefined) { return; }
+
+					var n = array.length;
+					var data, name;
+
+					while (n--) {
+						data = array[n];
+
+						for (name in data) {
+							if (!resource.validators[name]) { continue; }
+							if (!data.hasOwnProperty(name)) { continue; }
+							if (!validate(resource, data, name)) {
+								array.splice(n, 1);
+								console.warn('Resource: server response contains invalid property "' + name +
+								'" with value [' + (typeof data[name]) + '] ' + data[name] +
+								'. It has not been repaired by a validator, so this data object has been rejected from the response.');
+							};
+						}
+					}
+
+					return array;
+				});
+			};
+		})({
 			'get': requestGet,
 			'post': requestPost,
 			'delete': requestDelete,
@@ -608,6 +661,33 @@
 				});
 			})
 			.catch(logError);
+		},
+
+		validate: function(object) {
+			var name;
+
+			for (name in this.validators) {
+				if (!this.validators.hasOwnProperty(name)) { continue; }
+				if (!validate(this, object, name)) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+	};
+
+	var validators = {
+		'number': function validateNumber(data, name) {
+			return data[name] === undefined || typeof data[name] === 'number' ;
+		},
+
+		'string': function validateNumber(data, name) {
+			return data[name] === undefined || typeof data[name] === 'string';
+		},
+
+		'required': function validateRequired(data, name) {
+			return !!data[name];
 		}
 	};
 
@@ -662,7 +742,8 @@
 		    	index:      { value: options.index },
 		    	length:     { value: 0, configurable: true, writable: true },
 		    	prototype:  { value: Object.create(itemPrototype) },
-		    	properties: { value: extend(itemProperties, options.properties) }
+		    	properties: { value: extend({}, itemProperties, options.properties) },
+		    	validators: { value: extend({}, options.validators) }
 		    });
 
 		// Define methods that rely on resource.
@@ -688,6 +769,12 @@
 			delete: {
 				value: function destroy() {
 					return resource.delete(this);
+				}
+			},
+
+			validate: {
+				value: function destroy() {
+					return resource.validate(this);
 				}
 			}
 		});
