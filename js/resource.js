@@ -126,7 +126,7 @@
 	function get0(array) { return array && array[0]; }
 
 	function isDefined(val) {
-		return val !== undefined && val !== null;
+		return val !== undefined && val !== null && !Number.isNaN(val);
 	}
 
 	function isArrayOrCollection(object) {
@@ -189,14 +189,18 @@
 
 	function create(resource, data) {
 		if (data && resource.find(data)) {
-			throw new Error('resource.create() - Trying to create object with index of existing object. Cant do that.');
+			throw new Error('Resource: Cannot create object with key (' + resource.index + ') of existing object.');
 			return;
 		}
 
+		if (data && !validateDefined(resource.properties, data)) {
+			throw new Error('Resource: Cannot create object with invalid data. ' + data);
+		};
+
 		var object = Object.create(resource.prototype, resource.properties);
+
 		if (data) { extend(object, data); }
 
-		resource.validate(object);
 		resource.trigger('create', object);
 		resource.add(object);
 		return object;
@@ -386,12 +390,71 @@
 			object === undefined;
 	}
 
-	function validate(resource, data, name) {
-		var validator = typeof resource.validators[name] === 'string' ?
-			validators[resource.validators[name]] :
-			resource.validators[name] ;
+	var validators = {
+		'number': function validateNumber(data, name) {
+			return data[name] === undefined || (typeof data[name] === 'number' && !Number.isNaN(data[name])) ;
+		},
 
-		return !!validator(data, name);
+		'string': function validateNumber(data, name) {
+			return data[name] === undefined || typeof data[name] === 'string';
+		},
+
+		'array': function validateArray(data, name) {
+			return Array.isArray(data[name]);
+		},
+
+		'required': function validateRequired(data, name) {
+			return isDefined(data[name]);
+		}
+	};
+
+	function validate(properties, object, name) {
+		var validator = properties[name].validate;
+		var rules, n, l;
+
+		if (typeof validator === 'string') {
+			rules = validator.split(/\s+/);
+			l = rules.length;
+			n = -1;
+
+			while (++n < l) {
+				if (!validators[rules[n]](object, name)) {
+					return false;
+				};
+			}
+
+			return true;
+		}
+
+		return !!validator(object, name);
+	}
+
+	function validateDefined(properties, object) {
+		var name;
+
+		for (name in object) {
+			if (!object.hasOwnProperty(name)) { continue; }
+			if (!properties[name] || !properties[name].validate) { continue; }
+			if (!validate(properties, object, name)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	function validateAll(properties, object) {
+		var name;
+
+		for (name in properties) {
+			if (!properties.hasOwnProperty(name)) { continue; }
+			if (!properties[name].validate) { continue; }
+			if (!validate(properties, object, name)) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	mixin.resource = {
@@ -415,15 +478,9 @@
 					while (n--) {
 						data = array[n];
 
-						for (name in data) {
-							if (!resource.validators[name]) { continue; }
-							if (!data.hasOwnProperty(name)) { continue; }
-							if (!validate(resource, data, name)) {
-								array.splice(n, 1);
-								console.warn('Resource: server response contains invalid property "' + name +
-								'" with value [' + (typeof data[name]) + '] ' + data[name] +
-								'. It has not been repaired by a validator, so this data object has been rejected from the response.');
-							};
+						if (!validateDefined(resource.properties, data)) {
+							array.splice(n, 1);
+							console.warn('Resource: Server response contains invalid data. This object will not be updated locally.', data);
 						}
 					}
 
@@ -664,30 +721,7 @@
 		},
 
 		validate: function(object) {
-			var name;
-
-			for (name in this.validators) {
-				if (!this.validators.hasOwnProperty(name)) { continue; }
-				if (!validate(this, object, name)) {
-					return false;
-				}
-			}
-
-			return true;
-		}
-	};
-
-	var validators = {
-		'number': function validateNumber(data, name) {
-			return data[name] === undefined || typeof data[name] === 'number' ;
-		},
-
-		'string': function validateNumber(data, name) {
-			return data[name] === undefined || typeof data[name] === 'string';
-		},
-
-		'required': function validateRequired(data, name) {
-			return !!data[name];
+			return validateAll(this.properties, object);
 		}
 	};
 
@@ -742,8 +776,7 @@
 		    	index:      { value: options.index },
 		    	length:     { value: 0, configurable: true, writable: true },
 		    	prototype:  { value: Object.create(itemPrototype) },
-		    	properties: { value: extend({}, itemProperties, options.properties) },
-		    	validators: { value: extend({}, options.validators) }
+		    	properties: { value: extend({}, itemProperties, options.properties) }
 		    });
 
 		// Define methods that rely on resource.
@@ -779,16 +812,34 @@
 			}
 		});
 
+		populatePropertyDescriptors(resource.properties);
 		observeLength(resource);
 		options.setup(resource);
 		return resource;
 	};
+
+	function populatePropertyDescriptors(properties) {
+		var property;
+		var descriptor;
+		
+		for (property in properties) {
+			descriptor = properties[property];
+
+			if (!descriptor.get && !descriptor.set) {
+				if (descriptor.writable === undefined) { descriptor.writable = true; }
+				if (descriptor.enumerable === undefined) { descriptor.enumerable = true; }
+			}
+
+			if (descriptor.configurable === undefined) { descriptor.configurable = true; }
+		}
+	}
 
 	function isResource(object) {
 		return Resource.prototype.isPrototypeOf(object);
 	}
 
 	Resource.prototype = resourcePrototype;
+	Resource.validators = validators;
 	Resource.isResource = isResource;
 
 	window.Resource = Resource;

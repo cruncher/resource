@@ -40,6 +40,7 @@ identify models.
 - .add(object)
 - .remove(id)
 - .find(id)
+- .validate(object)
 - .get(property)
 - .set(property, value)
 
@@ -63,6 +64,7 @@ identify models.
 
 ### model methods
 
+- .validate()
 - .destroy()
 
 ###### remote server
@@ -89,6 +91,23 @@ Creates an object and stores it in <code>resource</code>.
 
 The <code>id</code> of the object is appended to <code>resource.url</code> when
 server requests are made.
+
+### .validate(object)
+
+Checks that properties of <code>object</code> conform to this resource's
+validation rules. To define validation rules, pass them in with property
+descriptors when you create the resource:
+
+    var resource = Resource(url, {
+        properties: {
+            username: {
+                validate: 'required string'
+            }
+        }
+    });
+
+    resource.validate({});                        // false
+    resource.validate({ username: 'sparky' });    // true
 
 ### .save()
 
