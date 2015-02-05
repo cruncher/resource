@@ -19,7 +19,7 @@
 		save: {
 			value: function save() {
 				if (!this.validate()) {
-					console.log('Resource: cant save(): object not valid.', this);
+					console.warn('Resource: Can\'t save invalid object.', this);
 					return failedResourcePromise;
 				}
 
