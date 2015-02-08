@@ -722,6 +722,23 @@
 
 		validate: function(object) {
 			return validateAll(this.properties, object);
+		},
+
+		sub: function sub() {
+			var subset = Sparky.Collection.prototype.sub.apply(this, arguments);
+
+			Sparky.extend(subset, {
+				create: this.create.bind(this),
+				delete: this.delete.bind(this),
+				request: this.request.bind(this),
+				load: this.load.bind(this),
+				save: this.save.bind(this),
+				storage: this.storage.bind(this),
+				store: this.store.bind(this),
+				retrieve: this.retrieve.bind(this)
+			});
+
+			return subset;
 		}
 	};
 
