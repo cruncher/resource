@@ -45,11 +45,6 @@
 
 					object.saving = false;
 					return object;
-				})
-				.catch(function(error) {
-					object.saving = false;
-					console.error(error.message);
-					console.trace(error.stack);
 				});
 			}
 		},
@@ -261,10 +256,10 @@
 		}
 
 		var url = resource.requestURL('post', object[resource.index]);
+		var data = JSON.stringify(object);
 
-		return request('post', url, JSON.stringify(object), 'application/json')
-			.then(singleResponse)
-			.catch(logError);
+		return request('post', url, data, 'application/json')
+			.then(singleResponse);
 	}
 
 	function requestPatch(resource, object) {
@@ -310,7 +305,7 @@
 				console.log('Resource: delete request failed. Putting object back into resource.');
 				// Delete failed, put the record back into
 				// the resource
-				resource.add(record);
+				resource.add(object);
 			})
 			.catch(logError);
 	}
