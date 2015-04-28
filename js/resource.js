@@ -230,8 +230,7 @@
 
 	function requestGet(resource, object) {
 		if (!isDefined(object)) {
-			return request('get', resource.requestURL('get'))
-				.catch(logError);
+			return request('get', resource.requestURL('get'));
 		}
 
 		var key = typeof object === 'number' || typeof object === 'string' ?
@@ -242,9 +241,7 @@
 
 		var url = resource.requestURL('get', key);
 
-		return request('get', url)
-			.then(singleResponse)
-			.catch(logError);
+		return request('get', url).then(singleResponse);
 	}
 
 	function requestPost(resource, object) {
@@ -258,8 +255,7 @@
 		var url = resource.requestURL('post', object[resource.index]);
 		var data = JSON.stringify(object);
 
-		return request('post', url, data, 'application/json')
-			.then(singleResponse);
+		return request('post', url, data, 'application/json').then(singleResponse);
 	}
 
 	function requestPatch(resource, object) {
@@ -278,9 +274,7 @@
 
 		var url = resource.requestURL('patch', key);
 
-		return request('patch', url, JSON.stringify(object), 'application/json')
-			.then(singleResponse)
-			.catch(logError);
+		return request('patch', url, JSON.stringify(object), 'application/json').then(singleResponse);
 	}
 
 	function requestDelete(resource, object) {
@@ -306,8 +300,7 @@
 				// Delete failed, put the record back into
 				// the resource
 				resource.add(object);
-			})
-			.catch(logError);
+			});
 	}
 
 	function resourceURL(resource) {
@@ -462,25 +455,27 @@
 		request: (function(methods) {
 			return function(method, id) {
 				var resource = this;
+				var request = methods[method](this, id)
+					.then(function(array) {
+						if (array === undefined) { return; }
 
-				return methods[method](this, id)
-				.then(function(array) {
-					if (array === undefined) { return; }
+						var n = array.length;
+						var data, name;
 
-					var n = array.length;
-					var data, name;
+						while (n--) {
+							data = array[n];
 
-					while (n--) {
-						data = array[n];
-
-						if (!validateDefined(resource.properties, data)) {
-							array.splice(n, 1);
-							console.warn('Resource: Server response contains invalid data. This object will not be updated locally.', data);
+							if (!validateDefined(resource.properties, data)) {
+								array.splice(n, 1);
+								console.warn('Resource: Server response contains invalid data. This object will not be updated locally.', data);
+							}
 						}
-					}
 
-					return array;
-				});
+						return array;
+					});
+
+				request.catch(logError);
+				return request;
 			};
 		})({
 			'get': requestGet,
