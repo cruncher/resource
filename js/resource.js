@@ -3,7 +3,7 @@
 
 	var debug = window.debug !== false;
 
-	var Collection = Sparky.Collection;
+	var Collection = window.Collection;
 
 	var failedResourcePromise = new Promise(function(accept, reject) {
 	    	reject(new Error('Object not found in resource.'));
