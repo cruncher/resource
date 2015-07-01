@@ -717,7 +717,7 @@
 		sub: function sub() {
 			var subset = Sparky.Collection.prototype.sub.apply(this, arguments);
 
-			Sparky.extend(subset, {
+			Object.assign(subset, {
 				create: this.create.bind(this),
 				delete: this.delete.bind(this),
 				request: this.request.bind(this),
@@ -732,7 +732,7 @@
 		}
 	};
 
-	var resourcePrototype = Sparky.extend({}, mixin.storage, mixin.events, mixin.array, mixin.collection, mixin.resource);
+	var resourcePrototype = Object.assign({}, mixin.storage, mixin.events, mixin.array, mixin.collection, mixin.resource);
 
 	function byId(a, b) {
 		return a.id > b.id ? 1 : -1 ;

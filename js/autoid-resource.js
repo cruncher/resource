@@ -1,7 +1,7 @@
 (function(window, Sparky) {
 	"use strict";
 
-	var extend = Sparky.extend;
+	var extend = Object.assign;
 
 	function createId(resource) {
 		var ids = resource.map(function(object) {
