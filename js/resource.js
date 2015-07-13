@@ -5,15 +5,15 @@
 
 	var Collection = window.Collection;
 
-	var failedResourcePromise = new Promise(function(accept, reject) {
-	    	reject(new Error('Object not found in resource.'));
-	    })
-	    .catch(noop);
+	var failedResourcePromise = Promise.reject("Object not found in resource.");
+	var failedStoragePromise  = Promise.reject("Object not found in storage.");
+	var failedUrlPromise      = Promise.reject("Resource: Cannot make request – resource.url is not defined.");
 
-	var failedStoragePromise = new Promise(function(accept, reject) {
-	    	reject(new Error('Object not found in storage.'));
-	    })
-	    .catch(noop);
+	// Stop our rejected promises getting logged as
+	// uncaught errors in dev tools.
+	failedResourcePromise.catch(noop);
+	failedStoragePromise.catch(noop);
+	failedUrlPromise.catch(noop);
 
 	var itemPrototype = Object.defineProperties({}, {
 		save: {
@@ -455,6 +455,11 @@
 		request: (function(methods) {
 			return function(method, id) {
 				var resource = this;
+
+				if (!isDefined(resource.url)) {
+					return failedUrlPromise;
+				}
+
 				var request = methods[method](this, id)
 					.then(function(array) {
 						if (array === undefined) { return; }
@@ -813,7 +818,7 @@
 			},
 
 			validate: {
-				value: function destroy() {
+				value: function validate() {
 					return resource.validate(this);
 				}
 			}
