@@ -1,8 +1,10 @@
-(function(window, Sparky, mixin, localforage) {
+(function(window) {
 	"use strict";
 
 	var debug = window.debug !== false;
 
+	var mixin = window.mixin;
+	var localforage = window.localforage;
 	var Collection = window.Collection;
 
 	var failedResourcePromise = Promise.reject("Object not found in resource.");
@@ -720,7 +722,7 @@
 		},
 
 		sub: function sub() {
-			var subset = Sparky.Collection.prototype.sub.apply(this, arguments);
+			var subset = Collection.prototype.sub.apply(this, arguments);
 
 			Object.assign(subset, {
 				create: this.create.bind(this),
@@ -855,4 +857,4 @@
 	Resource.isResource = isResource;
 
 	window.Resource = Resource;
-})(window, window.Sparky, window.mixin, window.localforage);
+})(window);
