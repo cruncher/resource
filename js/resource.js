@@ -739,7 +739,7 @@
 		}
 	};
 
-	var resourcePrototype = Object.assign({}, mixin.storage, mixin.events, mixin.array, mixin.collection, mixin.resource);
+	var resourcePrototype = Object.assign({}, mixin.storage, Collection.prototype, mixin.resource);
 
 	function byId(a, b) {
 		return a.id > b.id ? 1 : -1 ;
