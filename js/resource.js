@@ -2,6 +2,7 @@
 	"use strict";
 
 	var debug = window.debug !== false;
+	var Observable = window.Observable || function(object) { return object; };
 
 	var mixin = window.mixin;
 	var localforage = window.localforage;
@@ -163,7 +164,7 @@
 						}
 						else if (Collection.isCollection(obj1[key])) {
 							obj1[key].update.apply(obj1[key], obj2[key]);
-							
+
 							// If collection and incoming lengths don't match we
 							// have to remove some things from the collection.
 							if (obj1[key].length !== obj2[key].length) {
@@ -194,7 +195,7 @@
 			throw new Error('Resource: Cannot create object with invalid data. ' + data);
 		};
 
-		var object = Object.create(resource.prototype, resource.properties);
+		var object = Observable(Object.create(resource.prototype, resource.properties));
 
 		if (data) { extend(object, data); }
 
@@ -567,7 +568,7 @@
 				})
 				.catch(logError);
 			},
-			
+
 			'remove': function storageRemove(resource, object) {
 				// If no object was passed, remove the whole caboodle.
 				if (object === undefined) {
@@ -679,7 +680,7 @@
 				object = resource.find(id);
 
 				// If no object with that id is found, we can't very well
-				// store it now, can we? 
+				// store it now, can we?
 				if (!object) {
 					return failedResourcePromise.catch(logError);
 				}
@@ -835,7 +836,7 @@
 	function populatePropertyDescriptors(properties) {
 		var property;
 		var descriptor;
-		
+
 		for (property in properties) {
 			descriptor = properties[property];
 
