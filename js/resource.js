@@ -8,9 +8,12 @@
 	var localforage = window.localforage;
 	var Collection = window.Collection;
 
+	try {
 	var failedResourcePromise = Promise.reject("Object not found in resource.");
 	var failedStoragePromise  = Promise.reject("Object not found in storage.");
 	var failedUrlPromise      = Promise.reject("Resource: Cannot make request – resource.url is not defined.");
+	}
+	catch(e) {}
 
 	// Stop our rejected promises getting logged as
 	// uncaught errors in dev tools.
